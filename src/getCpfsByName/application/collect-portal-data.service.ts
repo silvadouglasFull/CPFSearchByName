@@ -6,7 +6,7 @@ import {
     TOTAL_PAGES,
 } from '@/getCpfsByName/domain/constants';
 import { validateSearchName } from '@/getCpfsByName/domain/search-name.utils';
-import { PortalRecord, PortalResultsWriter, PortalSearchClient } from '@/getCpfsByName/domain/types';
+import { PortalRecord, PortalSearchClient } from '@/getCpfsByName/domain/types';
 import { FileLogger } from '@/shared/logging/file-logger.service';
 
 interface CollectPortalDataSettings {
@@ -24,7 +24,6 @@ const DEFAULT_SETTINGS: CollectPortalDataSettings = {
 export class CollectPortalDataService {
     constructor(
         private readonly searchClient: PortalSearchClient,
-        private readonly resultsWriter: PortalResultsWriter,
         private readonly recordMapper: PortalRecordMapper = new PortalRecordMapper(),
         private readonly logger = new FileLogger('get-cpfs-by-name'),
         private readonly settings: CollectPortalDataSettings = DEFAULT_SETTINGS,
@@ -55,7 +54,6 @@ export class CollectPortalDataService {
                 }
             }
 
-            this.resultsWriter.save(allRecords);
             return allRecords;
         } finally {
             await this.searchClient.close();

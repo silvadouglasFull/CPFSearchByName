@@ -1,6 +1,6 @@
+import { DEFAULT_APP_SETTINGS, createAppSettingsService } from '@/appSettings';
 import { PortalRecordMapper } from '@/getCpfsByName/application/portal-record-mapper';
 import {
-    DEFAULT_RESULTS_FILE_NAME,
     FIRST_PAGE_NUMBER,
     PAGE_THROTTLE_DELAY_MS,
     TOTAL_PAGES,
@@ -8,9 +8,7 @@ import {
 import { InvalidSearchNameError } from '@/getCpfsByName/domain/errors';
 import { validateSearchName } from '@/getCpfsByName/domain/search-name.utils';
 import { PortalRecord } from '@/getCpfsByName/domain/types';
-import { JsonPortalResultsWriter } from '@/getCpfsByName/infrastructure/json-portal-results.writer';
 import { PuppeteerPortalSearchClient } from '@/getCpfsByName/infrastructure/puppeteer-portal-search.client';
-import { DEFAULT_APP_SETTINGS, createAppSettingsService } from '@/appSettings';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -58,11 +56,6 @@ export async function GET(request: Request): Promise<Response> {
                 searchApiPathname: settings.searchApiPathname,
                 searchPageUrl: settings.searchPageUrl,
             });
-            const resultsWriter = new JsonPortalResultsWriter(
-                DEFAULT_RESULTS_FILE_NAME,
-                settings.jsonOutputIndentSpaces,
-                settings.fileEncodingUtf8 as BufferEncoding,
-            );
             const mapper = new PortalRecordMapper(settings.detailsPageUrl);
             const allRecords: PortalRecord[] = [];
 
@@ -87,7 +80,6 @@ export async function GET(request: Request): Promise<Response> {
                     }
                 }
 
-                resultsWriter.save(allRecords);
                 controller.enqueue(sseEvent({ type: 'done', totalRecords: allRecords.length }));
             } catch (error) {
                 const message = error instanceof Error ? error.message : 'Unknown error.';

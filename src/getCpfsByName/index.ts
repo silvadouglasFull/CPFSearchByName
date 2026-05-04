@@ -2,9 +2,7 @@ import { DEFAULT_APP_SETTINGS, createAppSettingsService } from '@/appSettings';
 import { CollectPortalDataService } from '@/getCpfsByName/application/collect-portal-data.service';
 import { PortalRecordMapper } from '@/getCpfsByName/application/portal-record-mapper';
 import { runFromCli } from '@/getCpfsByName/cli/get-cpfs-by-name.cli';
-import { DEFAULT_RESULTS_FILE_NAME } from '@/getCpfsByName/domain/constants';
 import { PortalRecord, RawPortalRecord } from '@/getCpfsByName/domain/types';
-import { JsonPortalResultsWriter } from '@/getCpfsByName/infrastructure/json-portal-results.writer';
 import { PuppeteerPortalSearchClient } from '@/getCpfsByName/infrastructure/puppeteer-portal-search.client';
 
 export async function collectPortalData(searchName: string): Promise<PortalRecord[]> {
@@ -27,13 +25,8 @@ export async function collectPortalData(searchName: string): Promise<PortalRecor
         searchApiPathname: settings.searchApiPathname,
         searchPageUrl: settings.searchPageUrl,
     });
-    const resultsWriter = new JsonPortalResultsWriter(
-        DEFAULT_RESULTS_FILE_NAME,
-        settings.jsonOutputIndentSpaces,
-        settings.fileEncodingUtf8 as BufferEncoding,
-    );
     const mapper = new PortalRecordMapper(settings.detailsPageUrl);
-    const service = new CollectPortalDataService(searchClient, resultsWriter, mapper, undefined, {
+    const service = new CollectPortalDataService(searchClient, mapper, undefined, {
         firstPageNumber: settings.firstPageNumber,
         totalPages: settings.totalPages,
         pageThrottleDelayMs: settings.pageThrottleDelayMs,

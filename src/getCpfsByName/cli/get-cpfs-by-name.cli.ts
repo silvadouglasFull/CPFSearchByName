@@ -3,13 +3,11 @@ import { CollectPortalDataService } from '@/getCpfsByName/application/collect-po
 import { PortalRecordMapper } from '@/getCpfsByName/application/portal-record-mapper';
 import {
     CLI_USAGE_MESSAGE,
-    FILE_SAVED_PREFIX,
     SEARCH_ERROR_PREFIX,
     SEARCH_START_MESSAGE,
     SEARCH_SUCCESS_PREFIX,
     UNKNOWN_ERROR_MESSAGE,
 } from '@/getCpfsByName/domain/constants';
-import { JsonPortalResultsWriter } from '@/getCpfsByName/infrastructure/json-portal-results.writer';
 import { PuppeteerPortalSearchClient } from '@/getCpfsByName/infrastructure/puppeteer-portal-search.client';
 import { FileLogger } from '@/shared/logging/file-logger.service';
 
@@ -46,20 +44,14 @@ export class GetCpfsByNameCliRunner {
                 searchApiPathname: settings.searchApiPathname,
                 searchPageUrl: settings.searchPageUrl,
             });
-            const resultsWriter = new JsonPortalResultsWriter(
-                undefined,
-                settings.jsonOutputIndentSpaces,
-                settings.fileEncodingUtf8 as BufferEncoding,
-            );
             const mapper = new PortalRecordMapper(settings.detailsPageUrl);
-            const service = new CollectPortalDataService(searchClient, resultsWriter, mapper, this.logger, {
+            const service = new CollectPortalDataService(searchClient, mapper, this.logger, {
                 firstPageNumber: settings.firstPageNumber,
                 totalPages: settings.totalPages,
                 pageThrottleDelayMs: settings.pageThrottleDelayMs,
             });
             const records = await service.collect(searchName);
             this.logger.info(`${SEARCH_SUCCESS_PREFIX} ${records.length}`);
-            this.logger.info(`${FILE_SAVED_PREFIX} ${resultsWriter.save(records)}`);
         } catch (error) {
             const message = error instanceof Error ? error.message : UNKNOWN_ERROR_MESSAGE;
             this.logger.error(`${SEARCH_ERROR_PREFIX} ${message}`);
