@@ -30,3 +30,13 @@ export const filterCpfSearchHistory = pgTable('filter_cpf_search_history', {
     createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
 });
+
+export const generatorCpfHistory = pgTable('generator_cpf_history', {
+    id: uuid('id').defaultRandom().primaryKey(),
+    partialCpf: text('partial_cpf').notNull(),
+    stateRegionDigit: text('state_region_digit'),
+    resultRecords: jsonb('result_records').notNull(),
+    resultCount: integer('result_count').notNull().default(0),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+});
