@@ -2,6 +2,7 @@
 
 import { GeneratorCpfHistoryTable } from '@/components/generator-cpf/generator-cpf-history-table';
 import { GeneratorCpfResultsTable } from '@/components/generator-cpf/generator-cpf-results-table';
+import { GeneratorCpfSearchModal } from '@/components/generator-cpf/generator-cpf-search-modal';
 import {
     GeneratedCpfRecord,
     GeneratorCpfApiError,
@@ -20,7 +21,7 @@ import {
 } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import identifyByState from '@/identifyByState.json';
-import { Save, WandSparkles } from 'lucide-react';
+import { Save, Search, WandSparkles } from 'lucide-react';
 import { FormEvent, useMemo, useState } from 'react';
 
 const PARTIAL_CPF_PLACEHOLDER = '09108';
@@ -51,6 +52,7 @@ export function GeneratorCpfClient() {
     const [history, setHistory] = useState<PaginatedGeneratorCpfHistory | null>(null);
     const [selectedHistoryItem, setSelectedHistoryItem] = useState<GeneratorCpfHistoryRecord | null>(null);
     const [selectedHistoryItemId, setSelectedHistoryItemId] = useState<string | null>(null);
+    const [isSearchModalOpen, setIsSearchModalOpen] = useState(false);
 
     const canGenerate = useMemo(() => partialCpf.trim().length > 0, [partialCpf]);
     const canSave = useMemo(() => partialCpf.trim().length > 0 && records.length > 0, [partialCpf, records]);
@@ -196,8 +198,19 @@ export function GeneratorCpfClient() {
         }
     }
 
+    function handleSelectCpfFromModal(baseNineDigits: string): void {
+        setPartialCpf(baseNineDigits);
+        setIsSearchModalOpen(false);
+    }
+
     return (
-        <section className="space-y-6">
+        <>
+            <GeneratorCpfSearchModal
+                isOpen={isSearchModalOpen}
+                onClose={() => setIsSearchModalOpen(false)}
+                onSelectCpf={handleSelectCpfFromModal}
+            />
+            <section className="space-y-6">
             <div className="flex gap-2">
                 <Button
                     className="rounded-2xl"
@@ -228,7 +241,7 @@ export function GeneratorCpfClient() {
                             </CardDescription>
                         </CardHeader>
                         <CardContent>
-                            <form className="grid gap-3 md:grid-cols-[1fr_220px_auto]" onSubmit={handleGenerate}>
+                            <form className="grid gap-3 md:grid-cols-[1fr_220px_auto_auto]" onSubmit={handleGenerate}>
                                 <Input
                                     className="h-11 rounded-2xl"
                                     onChange={(event) => setPartialCpf(event.target.value)}
@@ -248,6 +261,15 @@ export function GeneratorCpfClient() {
                                         </option>
                                     ))}
                                 </select>
+                                <Button
+                                    className="h-11 rounded-2xl px-4"
+                                    onClick={() => setIsSearchModalOpen(true)}
+                                    type="button"
+                                    variant="outline"
+                                    title="Search partial CPF from history"
+                                >
+                                    <Search className="h-4 w-4" />
+                                </Button>
                                 <Button
                                     className="h-11 rounded-2xl px-6"
                                     disabled={!canGenerate || isLoading}
@@ -397,6 +419,7 @@ export function GeneratorCpfClient() {
                     ) : null}
                 </>
             ) : null}
-        </section>
+            </section>
+        </>
     );
 }

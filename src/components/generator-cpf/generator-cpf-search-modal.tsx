@@ -15,20 +15,20 @@ import { useState } from 'react';
 
 interface CpfRecord {
     id: string;
-    name: string;
     cpf: string;
-    relation: string;
+    formattedCpf: string;
+    baseNineDigits: string;
 }
 
-interface CpfSearchModalProps {
+interface GeneratorCpfSearchModalProps {
     isOpen: boolean;
     onClose: () => void;
-    onSelectCpf: (cpf: string) => void;
+    onSelectCpf: (baseNineDigits: string) => void;
 }
 
 const DEFAULT_LIMIT = 50;
 
-export function CpfSearchModal({ isOpen, onClose, onSelectCpf }: CpfSearchModalProps) {
+export function GeneratorCpfSearchModal({ isOpen, onClose, onSelectCpf }: GeneratorCpfSearchModalProps) {
     const [records, setRecords] = useState<CpfRecord[]>([]);
     const [searchInput, setSearchInput] = useState('');
     const [isLoading, setIsLoading] = useState(false);
@@ -47,7 +47,7 @@ export function CpfSearchModal({ isOpen, onClose, onSelectCpf }: CpfSearchModalP
                 params.set('search', searchTerm.trim());
             }
 
-            const response = await fetch(`/api/get-cpfs-by-name-search-records?${params.toString()}`, {
+            const response = await fetch(`/api/generator-cpf-history-search-records?${params.toString()}`, {
                 method: 'GET',
                 headers: { Accept: 'application/json' },
             });
@@ -67,8 +67,8 @@ export function CpfSearchModal({ isOpen, onClose, onSelectCpf }: CpfSearchModalP
         }
     }
 
-    function handleSelectCpf(cpf: string): void {
-        onSelectCpf(cpf);
+    function handleSelectCpf(baseNineDigits: string): void {
+        onSelectCpf(baseNineDigits);
         onClose();
     }
 
@@ -96,9 +96,9 @@ export function CpfSearchModal({ isOpen, onClose, onSelectCpf }: CpfSearchModalP
         <Dialog open={isOpen} onOpenChange={handleOpenChange}>
             <DialogContent className="max-h-[80vh] flex flex-col gap-4 w-full max-w-2xl">
                 <DialogHeader>
-                    <DialogTitle>Select CPF from history</DialogTitle>
+                    <DialogTitle>Select partial CPF from history</DialogTitle>
                     <DialogDescription>
-                        Search and select a CPF from collected search records.
+                        Search and select a partial CPF from previously generated candidates.
                     </DialogDescription>
                 </DialogHeader>
 
@@ -107,7 +107,7 @@ export function CpfSearchModal({ isOpen, onClose, onSelectCpf }: CpfSearchModalP
                         className="h-10 rounded-lg"
                         onChange={(event) => setSearchInput(event.target.value)}
                         onKeyDown={handleKeyDown}
-                        placeholder="Search by name or CPF..."
+                        placeholder="Search by CPF, formatted CPF, or base 9 digits..."
                         value={searchInput}
                     />
                     <Button
@@ -138,7 +138,7 @@ export function CpfSearchModal({ isOpen, onClose, onSelectCpf }: CpfSearchModalP
 
                 {!isLoading && !errorMessage && records.length === 0 && hasLoaded && (
                     <FriendlyMessage
-                        description="No CPF records found in search history."
+                        description="No CPF records found in generation history."
                         title="No records"
                         variant="info"
                     />
@@ -149,16 +149,14 @@ export function CpfSearchModal({ isOpen, onClose, onSelectCpf }: CpfSearchModalP
                         {records.map((record) => (
                             <button
                                 key={record.id}
-                                onClick={() => handleSelectCpf(record.cpf)}
+                                onClick={() => handleSelectCpf(record.baseNineDigits)}
                                 className="w-full text-left p-3 rounded-lg border border-slate-200 hover:bg-slate-50 transition-colors"
                             >
                                 <div className="flex justify-between items-start gap-2">
                                     <div className="flex-1">
-                                        <p className="font-medium text-sm text-slate-900">{record.name}</p>
-                                        <p className="text-sm text-slate-600">CPF: {record.cpf}</p>
-                                        {record.relation && (
-                                            <p className="text-xs text-slate-500 mt-1">{record.relation}</p>
-                                        )}
+                                        <p className="font-medium text-sm text-slate-900">CPF: {record.cpf}</p>
+                                        <p className="text-sm text-slate-600">Formatted: {record.formattedCpf}</p>
+                                        <p className="text-xs text-slate-500 mt-1">Base 9 digits: {record.baseNineDigits}</p>
                                     </div>
                                 </div>
                             </button>
