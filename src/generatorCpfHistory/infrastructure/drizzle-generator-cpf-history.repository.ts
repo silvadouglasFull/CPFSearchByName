@@ -1,6 +1,5 @@
 import { db } from '@/database/db';
-import { generatorCpfHistory } from '@/database/schema';
-import { GeneratedCpfRecord } from '@/generatorCpf/domain/types';
+import { generatorCpfHistory, generatorCpfHistoryRecords } from '@/database/schema';
 import {
     CreateGeneratorCpfHistoryInput,
     GeneratorCpfHistoryListParams,
@@ -9,72 +8,140 @@ import {
     PaginatedGeneratorCpfHistory,
     UpdateGeneratorCpfHistoryInput,
 } from '@/generatorCpfHistory/domain/types';
-import { desc, eq, sql } from 'drizzle-orm';
+import { asc, desc, eq, sql } from 'drizzle-orm';
 
 export class DrizzleGeneratorCpfHistoryRepository implements GeneratorCpfHistoryRepository {
     async create(input: CreateGeneratorCpfHistoryInput): Promise<GeneratorCpfHistoryRecord> {
-        const result = await db
-            .insert(generatorCpfHistory)
-            .values({
-                partialCpf: input.partialCpf,
-                stateRegionDigit: input.stateRegionDigit ?? null,
-                resultRecords: input.resultRecords,
-                resultCount: input.resultRecords.length,
-            })
-            .returning();
+        return db.transaction(async (tx) => {
+            const insertedSnapshot = await tx
+                .insert(generatorCpfHistory)
+                .values({
+                    partialCpf: input.partialCpf,
+                    stateRegionDigit: input.stateRegionDigit ?? null,
+                    resultCount: input.resultRecords.length,
+                })
+                .returning();
 
-        return this.mapRecord(result[0]!);
+            const snapshot = insertedSnapshot[0]!;
+
+            if (input.resultRecords.length > 0) {
+                await tx
+                    .insert(generatorCpfHistoryRecords)
+                    .values(
+                        input.resultRecords.map((record) => ({
+                            historyId: snapshot.id,
+                            cpf: record.cpf,
+                            formattedCpf: record.formattedCpf,
+                            baseNineDigits: record.baseNineDigits,
+                        })),
+                    );
+            }
+
+            const records = await tx
+                .select()
+                .from(generatorCpfHistoryRecords)
+                .where(eq(generatorCpfHistoryRecords.historyId, snapshot.id))
+                .orderBy(asc(generatorCpfHistoryRecords.createdAt));
+
+            return this.mapRecord(snapshot, records);
+        });
     }
 
     async getById(id: string): Promise<GeneratorCpfHistoryRecord | null> {
-        const result = await db
+        const snapshot = await db
             .select()
             .from(generatorCpfHistory)
             .where(eq(generatorCpfHistory.id, id))
             .limit(1);
 
-        if (!result[0]) {
+        if (!snapshot[0]) {
             return null;
         }
 
-        return this.mapRecord(result[0]);
+        const records = await db
+            .select()
+            .from(generatorCpfHistoryRecords)
+            .where(eq(generatorCpfHistoryRecords.historyId, id))
+            .orderBy(asc(generatorCpfHistoryRecords.createdAt));
+
+        return this.mapRecord(snapshot[0], records);
     }
 
     async update(id: string, updates: UpdateGeneratorCpfHistoryInput): Promise<GeneratorCpfHistoryRecord | null> {
-        const setValues: Partial<{
-            partialCpf: string;
-            stateRegionDigit: string | null;
-            resultRecords: GeneratedCpfRecord[];
-            resultCount: number;
-            updatedAt: Date;
-        }> = {
-            updatedAt: new Date(),
-        };
+        return db.transaction(async (tx) => {
+            const current = await tx
+                .select()
+                .from(generatorCpfHistory)
+                .where(eq(generatorCpfHistory.id, id))
+                .limit(1);
 
-        if (updates.partialCpf !== undefined) {
-            setValues.partialCpf = updates.partialCpf;
-        }
+            if (!current[0]) {
+                return null;
+            }
 
-        if (updates.stateRegionDigit !== undefined) {
-            setValues.stateRegionDigit = updates.stateRegionDigit;
-        }
+            const setValues: Partial<{
+                partialCpf: string;
+                stateRegionDigit: string | null;
+                resultCount: number;
+                updatedAt: Date;
+            }> = {
+                updatedAt: new Date(),
+            };
 
-        if (updates.resultRecords !== undefined) {
-            setValues.resultRecords = updates.resultRecords;
-            setValues.resultCount = updates.resultRecords.length;
-        }
+            if (updates.partialCpf !== undefined) {
+                setValues.partialCpf = updates.partialCpf;
+            }
 
-        const result = await db
-            .update(generatorCpfHistory)
-            .set(setValues)
-            .where(eq(generatorCpfHistory.id, id))
-            .returning();
+            if (updates.stateRegionDigit !== undefined) {
+                setValues.stateRegionDigit = updates.stateRegionDigit;
+            }
 
-        if (!result[0]) {
-            return null;
-        }
+            if (updates.resultRecords !== undefined) {
+                setValues.resultCount = updates.resultRecords.length;
+            }
 
-        return this.mapRecord(result[0]);
+            await tx
+                .update(generatorCpfHistory)
+                .set(setValues)
+                .where(eq(generatorCpfHistory.id, id));
+
+            if (updates.resultRecords !== undefined) {
+                await tx
+                    .delete(generatorCpfHistoryRecords)
+                    .where(eq(generatorCpfHistoryRecords.historyId, id));
+
+                if (updates.resultRecords.length > 0) {
+                    await tx
+                        .insert(generatorCpfHistoryRecords)
+                        .values(
+                            updates.resultRecords.map((record) => ({
+                                historyId: id,
+                                cpf: record.cpf,
+                                formattedCpf: record.formattedCpf,
+                                baseNineDigits: record.baseNineDigits,
+                            })),
+                        );
+                }
+            }
+
+                const updatedSnapshot = await tx
+                    .select()
+                    .from(generatorCpfHistory)
+                    .where(eq(generatorCpfHistory.id, id))
+                    .limit(1);
+
+                if (!updatedSnapshot[0]) {
+                    return null;
+                }
+
+                const updatedRecords = await tx
+                    .select()
+                    .from(generatorCpfHistoryRecords)
+                    .where(eq(generatorCpfHistoryRecords.historyId, id))
+                    .orderBy(asc(generatorCpfHistoryRecords.createdAt));
+
+                return this.mapRecord(updatedSnapshot[0], updatedRecords);
+        });
     }
 
     async delete(id: string): Promise<boolean> {
@@ -106,7 +173,7 @@ export class DrizzleGeneratorCpfHistoryRepository implements GeneratorCpfHistory
         const totalPages = Math.max(1, Math.ceil(totalItems / pageSize));
 
         return {
-            items: itemsResult.map((item) => this.mapRecord(item)),
+            items: itemsResult.map((item) => this.mapSummaryRecord(item)),
             page,
             pageSize,
             totalItems,
@@ -114,11 +181,26 @@ export class DrizzleGeneratorCpfHistoryRepository implements GeneratorCpfHistory
         };
     }
 
-    private mapRecord(row: typeof generatorCpfHistory.$inferSelect): GeneratorCpfHistoryRecord {
+    private mapRecord(
+        snapshot: typeof generatorCpfHistory.$inferSelect,
+        recordRows: Array<typeof generatorCpfHistoryRecords.$inferSelect>,
+    ): GeneratorCpfHistoryRecord {
         return {
-            ...row,
-            stateRegionDigit: row.stateRegionDigit ?? null,
-            resultRecords: (row.resultRecords as GeneratedCpfRecord[]) ?? [],
+            ...snapshot,
+            stateRegionDigit: snapshot.stateRegionDigit ?? null,
+            resultRecords: recordRows.map((row) => ({
+                cpf: row.cpf,
+                formattedCpf: row.formattedCpf,
+                baseNineDigits: row.baseNineDigits,
+            })),
+        };
+    }
+
+    private mapSummaryRecord(snapshot: typeof generatorCpfHistory.$inferSelect): GeneratorCpfHistoryRecord {
+        return {
+            ...snapshot,
+            stateRegionDigit: snapshot.stateRegionDigit ?? null,
+            resultRecords: [],
         };
     }
 }

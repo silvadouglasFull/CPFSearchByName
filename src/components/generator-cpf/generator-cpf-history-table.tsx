@@ -1,5 +1,6 @@
 import { GeneratorCpfHistoryRecord } from '@/components/generator-cpf/types';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import {
     Table,
     TableBody,
@@ -11,6 +12,8 @@ import {
 
 interface GeneratorCpfHistoryTableProps {
     items: GeneratorCpfHistoryRecord[];
+    isViewingItemId: string | null;
+    onViewRecords: (itemId: string) => void;
 }
 
 function formatDate(value: string): string {
@@ -23,7 +26,11 @@ function formatDate(value: string): string {
     return date.toLocaleString();
 }
 
-export function GeneratorCpfHistoryTable({ items }: GeneratorCpfHistoryTableProps) {
+export function GeneratorCpfHistoryTable({
+    items,
+    isViewingItemId,
+    onViewRecords,
+}: GeneratorCpfHistoryTableProps) {
     return (
         <div className="rounded-3xl border bg-card p-2 shadow-sm md:p-4">
             <div className="mb-4 flex items-center justify-between px-2">
@@ -41,6 +48,7 @@ export function GeneratorCpfHistoryTable({ items }: GeneratorCpfHistoryTableProp
                             <TableHead>Region Digit</TableHead>
                             <TableHead>Saved Results</TableHead>
                             <TableHead>Created At</TableHead>
+                            <TableHead className="text-right">Actions</TableHead>
                         </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -50,6 +58,18 @@ export function GeneratorCpfHistoryTable({ items }: GeneratorCpfHistoryTableProp
                                 <TableCell>{item.stateRegionDigit ?? 'All states'}</TableCell>
                                 <TableCell>{item.resultCount}</TableCell>
                                 <TableCell className="text-muted-foreground">{formatDate(item.createdAt)}</TableCell>
+                                <TableCell className="text-right">
+                                    <Button
+                                        className="rounded-xl"
+                                        disabled={isViewingItemId === item.id}
+                                        onClick={() => onViewRecords(item.id)}
+                                        size="sm"
+                                        type="button"
+                                        variant="outline"
+                                    >
+                                        {isViewingItemId === item.id ? 'Carregando...' : 'Visualizar CPFs'}
+                                    </Button>
+                                </TableCell>
                             </TableRow>
                         ))}
                     </TableBody>

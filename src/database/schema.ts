@@ -35,8 +35,18 @@ export const generatorCpfHistory = pgTable('generator_cpf_history', {
     id: uuid('id').defaultRandom().primaryKey(),
     partialCpf: text('partial_cpf').notNull(),
     stateRegionDigit: text('state_region_digit'),
-    resultRecords: jsonb('result_records').notNull(),
     resultCount: integer('result_count').notNull().default(0),
     createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+});
+
+export const generatorCpfHistoryRecords = pgTable('generator_cpf_history_records', {
+    id: uuid('id').defaultRandom().primaryKey(),
+    historyId: uuid('history_id')
+        .notNull()
+        .references(() => generatorCpfHistory.id, { onDelete: 'cascade' }),
+    cpf: text('cpf').notNull(),
+    formattedCpf: text('formatted_cpf').notNull(),
+    baseNineDigits: text('base_nine_digits').notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
 });

@@ -6,6 +6,7 @@ import {
     GeneratedCpfRecord,
     GeneratorCpfApiError,
     GeneratorCpfApiResponse,
+    GeneratorCpfHistoryRecord,
     PaginatedGeneratorCpfHistory,
 } from '@/components/generator-cpf/types';
 import { FriendlyMessage } from '@/components/shared/friendly-message';
@@ -45,8 +46,11 @@ export function GeneratorCpfClient() {
     const [isLoading, setIsLoading] = useState(false);
     const [isSaving, setIsSaving] = useState(false);
     const [isHistoryLoading, setIsHistoryLoading] = useState(false);
+    const [isHistoryDetailsLoading, setIsHistoryDetailsLoading] = useState(false);
     const [hasGenerated, setHasGenerated] = useState(false);
     const [history, setHistory] = useState<PaginatedGeneratorCpfHistory | null>(null);
+    const [selectedHistoryItem, setSelectedHistoryItem] = useState<GeneratorCpfHistoryRecord | null>(null);
+    const [selectedHistoryItemId, setSelectedHistoryItemId] = useState<string | null>(null);
 
     const canGenerate = useMemo(() => partialCpf.trim().length > 0, [partialCpf]);
     const canSave = useMemo(() => partialCpf.trim().length > 0 && records.length > 0, [partialCpf, records]);
@@ -93,6 +97,8 @@ export function GeneratorCpfClient() {
     async function loadHistory(page: number): Promise<void> {
         setIsHistoryLoading(true);
         setHistoryErrorMessage(null);
+        setSelectedHistoryItem(null);
+        setSelectedHistoryItemId(null);
 
         try {
             const response = await fetch(`/api/generator-cpf-history?page=${page}&pageSize=${HISTORY_PAGE_SIZE}`, {
@@ -112,6 +118,33 @@ export function GeneratorCpfClient() {
             setHistoryErrorMessage(message);
         } finally {
             setIsHistoryLoading(false);
+        }
+    }
+
+    async function handleViewHistoryRecords(itemId: string): Promise<void> {
+        setIsHistoryDetailsLoading(true);
+        setSelectedHistoryItemId(itemId);
+        setHistoryErrorMessage(null);
+
+        try {
+            const response = await fetch(`/api/generator-cpf-history/${itemId}`, {
+                method: 'GET',
+                headers: { Accept: 'application/json' },
+            });
+
+            if (!response.ok) {
+                const errorPayload = (await response.json()) as GeneratorCpfApiError;
+                throw new Error(errorPayload.error || 'Failed to load snapshot records.');
+            }
+
+            const payload = (await response.json()) as { item: GeneratorCpfHistoryRecord };
+            setSelectedHistoryItem(payload.item);
+        } catch (error) {
+            const message = error instanceof Error ? error.message : 'Unknown error.';
+            setHistoryErrorMessage(message);
+        } finally {
+            setIsHistoryDetailsLoading(false);
+            setSelectedHistoryItemId(null);
         }
     }
 
@@ -284,7 +317,13 @@ export function GeneratorCpfClient() {
 
                     {history && history.items.length > 0 ? (
                         <>
-                            <GeneratorCpfHistoryTable items={history.items} />
+                            <GeneratorCpfHistoryTable
+                                isViewingItemId={selectedHistoryItemId}
+                                items={history.items}
+                                onViewRecords={(itemId) => {
+                                    void handleViewHistoryRecords(itemId);
+                                }}
+                            />
 
                             <div className="flex items-center justify-end gap-2">
                                 <Button
@@ -313,6 +352,39 @@ export function GeneratorCpfClient() {
                                     Next
                                 </Button>
                             </div>
+
+                            {isHistoryDetailsLoading ? (
+                                <FriendlyMessage
+                                    description="Loading persisted CPF records for the selected snapshot."
+                                    title="Loading details"
+                                    variant="info"
+                                />
+                            ) : null}
+
+                            {selectedHistoryItem ? (
+                                <>
+                                    <Card className="rounded-3xl shadow-sm">
+                                        <CardHeader>
+                                            <CardTitle>Snapshot Details</CardTitle>
+                                            <CardDescription>
+                                                Partial CPF: {selectedHistoryItem.partialCpf} | Region digit:{' '}
+                                                {selectedHistoryItem.stateRegionDigit ?? 'All states'} | Saved results:{' '}
+                                                {selectedHistoryItem.resultCount}
+                                            </CardDescription>
+                                        </CardHeader>
+                                    </Card>
+
+                                    {selectedHistoryItem.resultRecords.length > 0 ? (
+                                        <GeneratorCpfResultsTable records={selectedHistoryItem.resultRecords} />
+                                    ) : (
+                                        <FriendlyMessage
+                                            description="This snapshot has no persisted CPF records."
+                                            title="No records in snapshot"
+                                            variant="info"
+                                        />
+                                    )}
+                                </>
+                            ) : null}
                         </>
                     ) : null}
 
