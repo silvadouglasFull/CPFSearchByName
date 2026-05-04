@@ -1,5 +1,6 @@
 'use client';
 
+import { CpfSearchModal } from '@/components/filter-by-cpf/cpf-search-modal';
 import { FilterCpfHistoryTable } from '@/components/filter-by-cpf/filter-cpf-history-table';
 import { FilterCpfResultsTable } from '@/components/filter-by-cpf/filter-cpf-results-table';
 import {
@@ -37,6 +38,7 @@ export function FilterCpfClient() {
     const [isHistoryLoading, setIsHistoryLoading] = useState(false);
     const [hasSearched, setHasSearched] = useState(false);
     const [history, setHistory] = useState<PaginatedFilterCpfHistory | null>(null);
+    const [isSearchModalOpen, setIsSearchModalOpen] = useState(false);
 
     const canSearch = useMemo(() => partialCpf.trim().length > 0, [partialCpf]);
     const canSave = useMemo(() => partialCpf.trim().length > 0 && records.length > 0, [partialCpf, records]);
@@ -146,8 +148,19 @@ export function FilterCpfClient() {
         }
     }
 
+    function handleSelectCpfFromModal(cpf: string): void {
+        setPartialCpf(cpf);
+        setIsSearchModalOpen(false);
+    }
+
     return (
-        <section className="space-y-6">
+        <>
+            <CpfSearchModal
+                isOpen={isSearchModalOpen}
+                onClose={() => setIsSearchModalOpen(false)}
+                onSelectCpf={handleSelectCpfFromModal}
+            />
+            <section className="space-y-6">
             <div className="flex gap-2">
                 <Button
                     className="rounded-2xl"
@@ -177,13 +190,22 @@ export function FilterCpfClient() {
                     </CardDescription>
                 </CardHeader>
                 <CardContent>
-                    <form className="grid gap-3 sm:grid-cols-[1fr_auto]" onSubmit={handleSearch}>
+                    <form className="grid gap-3 sm:grid-cols-[1fr_auto_auto]" onSubmit={handleSearch}>
                         <Input
                             className="h-11 rounded-2xl"
                             onChange={(event) => setPartialCpf(event.target.value)}
                             placeholder={PARTIAL_CPF_PLACEHOLDER}
                             value={partialCpf}
                         />
+                        <Button
+                            className="h-11 rounded-2xl px-4"
+                            onClick={() => setIsSearchModalOpen(true)}
+                            type="button"
+                            variant="outline"
+                            title="Search CPF from history"
+                        >
+                            <Search className="h-4 w-4" />
+                        </Button>
                         <Button
                             className="h-11 rounded-2xl px-6"
                             disabled={!canSearch || isLoading}
@@ -292,6 +314,7 @@ export function FilterCpfClient() {
                     ) : null}
                 </>
             ) : null}
-        </section>
+            </section>
+        </>
     );
 }
