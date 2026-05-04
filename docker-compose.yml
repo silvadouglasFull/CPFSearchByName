@@ -1,0 +1,21 @@
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: verifydocs-db-1
+    ports:
+      - "5433:5432"
+    environment:
+      POSTGRES_DB: verifydocs
+      POSTGRES_USER: verifydocs
+      POSTGRES_PASSWORD: verifydocs
+    volumes:
+      - verifydocs-db-data:/var/lib/postgresql/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U verifydocs -d verifydocs"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  verifydocs-db-data:

@@ -1,6 +1,7 @@
+import { DEFAULT_APP_SETTINGS, createAppSettingsService } from '@/appSettings';
 import { CollectPortalDataService } from '@/getCpfsByName/application/collect-portal-data.service';
+import { PortalRecordMapper } from '@/getCpfsByName/application/portal-record-mapper';
 import {
-    CLI_FIRST_USER_ARG_INDEX,
     CLI_USAGE_MESSAGE,
     FILE_SAVED_PREFIX,
     SEARCH_ERROR_PREFIX,
@@ -13,14 +14,18 @@ import { PuppeteerPortalSearchClient } from '@/getCpfsByName/infrastructure/pupp
 import { FileLogger } from '@/shared/logging/file-logger.service';
 
 export class GetCpfsByNameCliRunner {
-    constructor(
-        private readonly searchClient = new PuppeteerPortalSearchClient(),
-        private readonly resultsWriter = new JsonPortalResultsWriter(),
-        private readonly logger = new FileLogger('get-cpfs-by-name'),
-    ) { }
+    constructor(private readonly logger = new FileLogger('get-cpfs-by-name')) { }
 
     async run(): Promise<void> {
-        const searchName = process.argv.slice(CLI_FIRST_USER_ARG_INDEX).join(' ').trim();
+        let settings = DEFAULT_APP_SETTINGS;
+
+        try {
+            settings = await createAppSettingsService().getSettings();
+        } catch {
+            settings = DEFAULT_APP_SETTINGS;
+        }
+
+        const searchName = process.argv.slice(settings.cliFirstUserArgIndex).join(' ').trim();
 
         if (!searchName) {
             this.logger.error(CLI_USAGE_MESSAGE);
@@ -30,10 +35,31 @@ export class GetCpfsByNameCliRunner {
         this.logger.info(SEARCH_START_MESSAGE);
 
         try {
-            const service = new CollectPortalDataService(this.searchClient, this.resultsWriter, undefined, this.logger);
+            const searchClient = new PuppeteerPortalSearchClient({
+                defaultPageSelector: settings.defaultPageSelector,
+                firstPageNumber: settings.firstPageNumber,
+                pageNavigationTimeoutMs: settings.pageNavigationTimeoutMs,
+                pageResponseTimeoutMs: settings.pageResponseTimeoutMs,
+                pageSelectorTimeoutMs: settings.pageSelectorTimeoutMs,
+                resultsPerPage: settings.resultsPerPage,
+                searchApiHostname: settings.searchApiHostname,
+                searchApiPathname: settings.searchApiPathname,
+                searchPageUrl: settings.searchPageUrl,
+            });
+            const resultsWriter = new JsonPortalResultsWriter(
+                undefined,
+                settings.jsonOutputIndentSpaces,
+                settings.fileEncodingUtf8 as BufferEncoding,
+            );
+            const mapper = new PortalRecordMapper(settings.detailsPageUrl);
+            const service = new CollectPortalDataService(searchClient, resultsWriter, mapper, this.logger, {
+                firstPageNumber: settings.firstPageNumber,
+                totalPages: settings.totalPages,
+                pageThrottleDelayMs: settings.pageThrottleDelayMs,
+            });
             const records = await service.collect(searchName);
             this.logger.info(`${SEARCH_SUCCESS_PREFIX} ${records.length}`);
-            this.logger.info(`${FILE_SAVED_PREFIX} ${this.resultsWriter.save(records)}`);
+            this.logger.info(`${FILE_SAVED_PREFIX} ${resultsWriter.save(records)}`);
         } catch (error) {
             const message = error instanceof Error ? error.message : UNKNOWN_ERROR_MESSAGE;
             this.logger.error(`${SEARCH_ERROR_PREFIX} ${message}`);
