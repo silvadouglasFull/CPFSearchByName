@@ -12,11 +12,18 @@ import {
     CardTitle,
 } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
+import identifyByState from '@/identifyByState.json';
 import { WandSparkles } from 'lucide-react';
 import { FormEvent, useMemo, useState } from 'react';
 
 const PARTIAL_CPF_PLACEHOLDER = '09108';
-const REGION_DIGIT_PLACEHOLDER = '8';
+const STATE_BY_REGION_DIGIT = identifyByState as Record<string, string[]>;
+const REGION_OPTIONS = Object.entries(STATE_BY_REGION_DIGIT)
+    .sort(([digitA], [digitB]) => Number(digitA) - Number(digitB))
+    .map(([digit, states]) => ({
+        value: digit,
+        label: `${states.join(', ')} (digit ${digit})`,
+    }));
 
 export function GeneratorCpfClient() {
     const [partialCpf, setPartialCpf] = useState('');
@@ -73,24 +80,31 @@ export function GeneratorCpfClient() {
                 <CardHeader>
                     <CardTitle>Generate CPF Candidates</CardTitle>
                     <CardDescription>
-                        Provide a partial CPF from 1 to 9 digits and, optionally, a region digit from 0 to 9.
+                        Provide a partial CPF from 1 to 9 digits and, optionally, choose a state to apply its CPF
+                        region digit.
                     </CardDescription>
                 </CardHeader>
                 <CardContent>
-                    <form className="grid gap-3 md:grid-cols-[1fr_120px_auto]" onSubmit={handleGenerate}>
+                    <form className="grid gap-3 md:grid-cols-[1fr_220px_auto]" onSubmit={handleGenerate}>
                         <Input
                             className="h-11 rounded-2xl"
                             onChange={(event) => setPartialCpf(event.target.value)}
                             placeholder={PARTIAL_CPF_PLACEHOLDER}
                             value={partialCpf}
                         />
-                        <Input
-                            className="h-11 rounded-2xl"
-                            maxLength={1}
+                        <select
+                            aria-label="State filter"
+                            className="h-11 rounded-2xl border bg-background px-3 text-sm outline-none ring-offset-background transition-shadow focus-visible:ring-2 focus-visible:ring-ring/60"
                             onChange={(event) => setRegionDigit(event.target.value)}
-                            placeholder={REGION_DIGIT_PLACEHOLDER}
                             value={regionDigit}
-                        />
+                        >
+                            <option value="">All states (no region filter)</option>
+                            {REGION_OPTIONS.map((option) => (
+                                <option key={option.value} value={option.value}>
+                                    {option.label}
+                                </option>
+                            ))}
+                        </select>
                         <Button className="h-11 rounded-2xl px-6" disabled={!canGenerate || isLoading} type="submit">
                             <WandSparkles className="mr-2 h-4 w-4" />
                             {isLoading ? 'Generating...' : 'Generate'}
