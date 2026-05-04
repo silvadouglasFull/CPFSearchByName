@@ -1,4 +1,4 @@
-import { Home, Search, WandSparkles } from 'lucide-react';
+import { Home, Search, UserSearch, WandSparkles } from 'lucide-react';
 
 export interface NavigationLink {
     label: string;
@@ -25,5 +25,11 @@ export const NAVIGATION_LINKS: NavigationLink[] = [
         href: '/generator-cpf',
         icon: WandSparkles,
         description: 'Generate valid CPF candidates by partial digits.',
+    },
+    {
+        label: 'Get CPFs by Name',
+        href: '/get-cpfs-by-name',
+        icon: UserSearch,
+        description: 'Collect CPF records from portal pages by person name.',
     },
 ];

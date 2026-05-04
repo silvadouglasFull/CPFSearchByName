@@ -8,7 +8,7 @@ import fs from 'fs';
 import path from 'path';
 
 export class JsonPortalResultsWriter implements PortalResultsWriter {
-    constructor(private readonly outputFilePath = path.join(process.cwd(), DEFAULT_RESULTS_FILE_NAME)) { }
+    constructor(private readonly outputFilePath = path.join(/*turbopackIgnore: true*/ process.cwd(), DEFAULT_RESULTS_FILE_NAME)) { }
 
     save(records: PortalRecord[]): string {
         fs.writeFileSync(
