@@ -1,4 +1,4 @@
-import { Home, Search, UserSearch, WandSparkles } from 'lucide-react';
+import { Home, Search, Settings, UserSearch, WandSparkles } from 'lucide-react';
 
 export interface NavigationLink {
     label: string;
@@ -31,5 +31,11 @@ export const NAVIGATION_LINKS: NavigationLink[] = [
         href: '/get-cpfs-by-name',
         icon: UserSearch,
         description: 'Collect CPF records from portal pages by person name.',
+    },
+    {
+        label: 'App Settings',
+        href: '/app-settings',
+        icon: Settings,
+        description: 'View and edit global application settings.',
     },
 ];
