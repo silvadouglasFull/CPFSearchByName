@@ -1,0 +1,22 @@
+CREATE TABLE "app_settings" (
+	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+	"singleton_key" text DEFAULT 'global' NOT NULL,
+	"results_per_page" integer DEFAULT 10 NOT NULL,
+	"total_pages" integer DEFAULT 6 NOT NULL,
+	"page_response_timeout_ms" integer DEFAULT 30000 NOT NULL,
+	"page_navigation_timeout_ms" integer DEFAULT 60000 NOT NULL,
+	"page_selector_timeout_ms" integer DEFAULT 15000 NOT NULL,
+	"page_throttle_delay_ms" integer DEFAULT 1000 NOT NULL,
+	"json_output_indent_spaces" integer DEFAULT 2 NOT NULL,
+	"file_encoding_utf8" text DEFAULT 'utf-8' NOT NULL,
+	"cli_first_user_arg_index" integer DEFAULT 2 NOT NULL,
+	"first_page_number" integer DEFAULT 1 NOT NULL,
+	"search_page_url" text DEFAULT 'https://portaldatransparencia.gov.br/pessoa-fisica/busca/lista' NOT NULL,
+	"details_page_url" text DEFAULT 'https://portaldatransparencia.gov.br/busca/pessoa-fisica' NOT NULL,
+	"search_api_hostname" text DEFAULT 'busca.portaldatransparencia.gov.br' NOT NULL,
+	"search_api_pathname" text DEFAULT '/busca/pessoa-fisica' NOT NULL,
+	"default_page_selector" text DEFAULT '#paginacao li[data-lp="1"] a' NOT NULL,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
+	"updated_at" timestamp with time zone DEFAULT now() NOT NULL,
+	CONSTRAINT "app_settings_singleton_key_unique" UNIQUE("singleton_key")
+);
