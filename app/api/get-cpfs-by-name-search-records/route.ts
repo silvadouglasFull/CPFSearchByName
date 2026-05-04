@@ -25,6 +25,13 @@ function extractCpfDigits(cpfString: string): string {
     return cpfString;
 }
 
+function normalizeSearchTerm(term: string): string {
+    // Remove formatação de CPF mas mantém o padrão para busca
+    const withoutDots = term.replace(/\./g, '');
+    const withoutDash = withoutDots.replace(/-/g, '');
+    return withoutDash;
+}
+
 export async function GET(request: Request): Promise<NextResponse> {
     try {
         const { searchParams } = new URL(request.url);
@@ -46,7 +53,7 @@ export async function GET(request: Request): Promise<NextResponse> {
         const whereConditions = searchTerm
             ? or(
                 ilike(getCpfsByNameSearchRecords.name, `%${searchTerm}%`),
-                ilike(getCpfsByNameSearchRecords.cpf, `%${searchTerm}%`)
+                ilike(getCpfsByNameSearchRecords.cpf, `%${normalizeSearchTerm(searchTerm)}%`)
             )
             : undefined;
 

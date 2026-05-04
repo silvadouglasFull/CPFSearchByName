@@ -1,4 +1,4 @@
-import { generatorCpfHistoryRecords } from '@/database/schema';
+import { getCpfsByNameSearchRecords } from '@/database/schema';
 import { ilike, or } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/postgres-js';
 import { NextResponse } from 'next/server';
@@ -6,19 +6,30 @@ import postgres from 'postgres';
 
 interface CpfRecord {
     id: string;
+    name: string;
     cpf: string;
-    formattedCpf: string;
-    baseNineDigits: string;
+    relation: string;
 }
 
 const DEFAULT_LIMIT = 50;
 
-function extractBaseNineDigits(cpfString: string): string {
-    const digitsOnly = cpfString.replace(/\D/g, '');
-    if (digitsOnly.length >= 9) {
-        return digitsOnly.substring(0, 9);
+function extractCpfDigits(cpfString: string): string {
+    const match = cpfString.match(/\d{3}\.\d{3}\.\d{3}-\d{2}/);
+    if (match) {
+        return match[0].replace(/\D/g, '');
     }
-    return digitsOnly;
+    const digitsOnly = cpfString.replace(/\D/g, '');
+    if (digitsOnly.length === 11) {
+        return digitsOnly;
+    }
+    return cpfString;
+}
+
+function normalizeSearchTerm(term: string): string {
+    // Remove formatação de CPF mas mantém o padrão para busca
+    const withoutDots = term.replace(/\./g, '');
+    const withoutDash = withoutDots.replace(/-/g, '');
+    return withoutDash;
 }
 
 export async function GET(request: Request): Promise<NextResponse> {
@@ -41,20 +52,19 @@ export async function GET(request: Request): Promise<NextResponse> {
 
         const whereConditions = searchTerm
             ? or(
-                ilike(generatorCpfHistoryRecords.cpf, `%${searchTerm}%`),
-                ilike(generatorCpfHistoryRecords.formattedCpf, `%${searchTerm}%`),
-                ilike(generatorCpfHistoryRecords.baseNineDigits, `%${searchTerm}%`)
+                ilike(getCpfsByNameSearchRecords.name, `%${searchTerm}%`),
+                ilike(getCpfsByNameSearchRecords.cpf, `%${normalizeSearchTerm(searchTerm)}%`)
             )
             : undefined;
 
         const records = await db
             .select({
-                id: generatorCpfHistoryRecords.id,
-                cpf: generatorCpfHistoryRecords.cpf,
-                formattedCpf: generatorCpfHistoryRecords.formattedCpf,
-                baseNineDigits: generatorCpfHistoryRecords.baseNineDigits,
+                id: getCpfsByNameSearchRecords.id,
+                name: getCpfsByNameSearchRecords.name,
+                cpf: getCpfsByNameSearchRecords.cpf,
+                relation: getCpfsByNameSearchRecords.relation,
             })
-            .from(generatorCpfHistoryRecords)
+            .from(getCpfsByNameSearchRecords)
             .where(whereConditions)
             .limit(limit)
             .offset(offset);
@@ -63,9 +73,9 @@ export async function GET(request: Request): Promise<NextResponse> {
 
         const mappedRecords: CpfRecord[] = records.map((record) => ({
             id: record.id,
-            cpf: record.cpf,
-            formattedCpf: record.formattedCpf,
-            baseNineDigits: extractBaseNineDigits(record.baseNineDigits),
+            name: record.name,
+            cpf: extractCpfDigits(record.cpf),
+            relation: record.relation,
         }));
 
         return NextResponse.json(

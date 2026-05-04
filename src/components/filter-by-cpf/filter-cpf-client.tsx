@@ -1,6 +1,5 @@
 'use client';
 
-import { CpfSearchModal } from '@/components/filter-by-cpf/cpf-search-modal';
 import { FilterCpfHistoryTable } from '@/components/filter-by-cpf/filter-cpf-history-table';
 import { FilterCpfResultsTable } from '@/components/filter-by-cpf/filter-cpf-results-table';
 import {
@@ -38,7 +37,6 @@ export function FilterCpfClient() {
     const [isHistoryLoading, setIsHistoryLoading] = useState(false);
     const [hasSearched, setHasSearched] = useState(false);
     const [history, setHistory] = useState<PaginatedFilterCpfHistory | null>(null);
-    const [isSearchModalOpen, setIsSearchModalOpen] = useState(false);
 
     const canSearch = useMemo(() => partialCpf.trim().length > 0, [partialCpf]);
     const canSave = useMemo(() => partialCpf.trim().length > 0 && records.length > 0, [partialCpf, records]);
@@ -150,170 +148,155 @@ export function FilterCpfClient() {
 
     function handleSelectCpfFromModal(cpf: string): void {
         setPartialCpf(cpf);
-        setIsSearchModalOpen(false);
     }
 
     return (
         <>
-            <CpfSearchModal
-                isOpen={isSearchModalOpen}
-                onClose={() => setIsSearchModalOpen(false)}
-                onSelectCpf={handleSelectCpfFromModal}
-            />
             <section className="space-y-6">
-            <div className="flex gap-2">
-                <Button
-                    className="rounded-2xl"
-                    onClick={openSearchTab}
-                    type="button"
-                    variant={activeTab === 'search' ? 'default' : 'outline'}
-                >
-                    Search
-                </Button>
-                <Button
-                    className="rounded-2xl"
-                    onClick={openHistoryTab}
-                    type="button"
-                    variant={activeTab === 'history' ? 'default' : 'outline'}
-                >
-                    History
-                </Button>
-            </div>
+                <div className="flex gap-2">
+                    <Button
+                        className="rounded-2xl"
+                        onClick={openSearchTab}
+                        type="button"
+                        variant={activeTab === 'search' ? 'default' : 'outline'}
+                    >
+                        Search
+                    </Button>
+                    <Button
+                        className="rounded-2xl"
+                        onClick={openHistoryTab}
+                        type="button"
+                        variant={activeTab === 'history' ? 'default' : 'outline'}
+                    >
+                        History
+                    </Button>
+                </div>
 
-            {activeTab === 'search' ? (
-                <>
-            <Card className="rounded-3xl shadow-sm">
-                <CardHeader>
-                    <CardTitle>Find by Partial CPF</CardTitle>
-                    <CardDescription>
-                        Enter any CPF segment from 1 to 9 digits to search matching records.
-                    </CardDescription>
-                </CardHeader>
-                <CardContent>
-                    <form className="grid gap-3 sm:grid-cols-[1fr_auto_auto]" onSubmit={handleSearch}>
-                        <Input
-                            className="h-11 rounded-2xl"
-                            onChange={(event) => setPartialCpf(event.target.value)}
-                            placeholder={PARTIAL_CPF_PLACEHOLDER}
-                            value={partialCpf}
-                        />
-                        <Button
-                            className="h-11 rounded-2xl px-4"
-                            onClick={() => setIsSearchModalOpen(true)}
-                            type="button"
-                            variant="outline"
-                            title="Search CPF from history"
-                        >
-                            <Search className="h-4 w-4" />
-                        </Button>
-                        <Button
-                            className="h-11 rounded-2xl px-6"
-                            disabled={!canSearch || isLoading}
-                            type="submit"
-                        >
-                            <Search className="mr-2 h-4 w-4" />
-                            {isLoading ? 'Searching...' : 'Search'}
-                        </Button>
-                    </form>
+                {activeTab === 'search' ? (
+                    <>
+                        <Card className="rounded-3xl shadow-sm">
+                            <CardHeader>
+                                <CardTitle>Find by Partial CPF</CardTitle>
+                                <CardDescription>
+                                    Enter any CPF segment from 1 to 9 digits to search matching records.
+                                </CardDescription>
+                            </CardHeader>
+                            <CardContent>
+                                <form className="grid gap-3 sm:grid-cols-[1fr_auto_auto]" onSubmit={handleSearch}>
+                                    <Input
+                                        className="h-11 rounded-2xl"
+                                        onChange={(event) => setPartialCpf(event.target.value)}
+                                        placeholder={PARTIAL_CPF_PLACEHOLDER}
+                                        value={partialCpf}
+                                    />
+                                    <Button
+                                        className="h-11 rounded-2xl px-6"
+                                        disabled={!canSearch || isLoading}
+                                        type="submit"
+                                    >
+                                        <Search className="mr-2 h-4 w-4" />
+                                        {isLoading ? 'Searching...' : 'Search'}
+                                    </Button>
+                                </form>
 
-                    <div className="mt-3 flex justify-end">
-                        <Button
-                            className="h-11 rounded-2xl px-6"
-                            disabled={!canSave || isSaving}
-                            onClick={() => {
-                                void handleSaveResults();
-                            }}
-                            type="button"
-                            variant="secondary"
-                        >
-                            <Save className="mr-2 h-4 w-4" />
-                            {isSaving ? 'Saving...' : 'Salvar Resultados'}
-                        </Button>
-                    </div>
-                </CardContent>
-            </Card>
+                                <div className="mt-3 flex justify-end">
+                                    <Button
+                                        className="h-11 rounded-2xl px-6"
+                                        disabled={!canSave || isSaving}
+                                        onClick={() => {
+                                            void handleSaveResults();
+                                        }}
+                                        type="button"
+                                        variant="secondary"
+                                    >
+                                        <Save className="mr-2 h-4 w-4" />
+                                        {isSaving ? 'Saving...' : 'Salvar Resultados'}
+                                    </Button>
+                                </div>
+                            </CardContent>
+                        </Card>
 
-            {errorMessage ? (
-                <FriendlyMessage
-                    description={errorMessage}
-                    title="Request failed"
-                    variant="error"
-                />
-            ) : null}
+                        {errorMessage ? (
+                            <FriendlyMessage
+                                description={errorMessage}
+                                title="Request failed"
+                                variant="error"
+                            />
+                        ) : null}
 
-            {hasSearched && !isLoading && records.length === 0 && !errorMessage ? (
-                <FriendlyMessage
-                    description="No CPF records matched this partial value in resultados_portal.json."
-                    title="No matching records"
-                    variant="info"
-                />
-            ) : null}
+                        {hasSearched && !isLoading && records.length === 0 && !errorMessage ? (
+                            <FriendlyMessage
+                                description="No CPF records matched this partial value in resultados_portal.json."
+                                title="No matching records"
+                                variant="info"
+                            />
+                        ) : null}
 
-            {records.length > 0 ? <FilterCpfResultsTable records={records} /> : null}
-                </>
-            ) : null}
+                        {records.length > 0 ? <FilterCpfResultsTable records={records} /> : null}
+                    </>
+                ) : null}
 
-            {activeTab === 'history' ? (
-                <>
-                    {isHistoryLoading ? (
-                        <FriendlyMessage
-                            description="Loading saved searches."
-                            title="Loading history"
-                            variant="info"
-                        />
-                    ) : null}
+                {activeTab === 'history' ? (
+                    <>
+                        {isHistoryLoading ? (
+                            <FriendlyMessage
+                                description="Loading saved searches."
+                                title="Loading history"
+                                variant="info"
+                            />
+                        ) : null}
 
-                    {historyMessage ? (
-                        <FriendlyMessage
-                            description={historyMessage}
-                            title={historyMessage === 'Results saved to history.' ? 'Success' : 'History error'}
-                            variant={historyMessage === 'Results saved to history.' ? 'success' : 'error'}
-                        />
-                    ) : null}
+                        {historyMessage ? (
+                            <FriendlyMessage
+                                description={historyMessage}
+                                title={historyMessage === 'Results saved to history.' ? 'Success' : 'History error'}
+                                variant={historyMessage === 'Results saved to history.' ? 'success' : 'error'}
+                            />
+                        ) : null}
 
-                    {history && history.items.length > 0 ? (
-                        <>
-                            <FilterCpfHistoryTable items={history.items} />
+                        {history && history.items.length > 0 ? (
+                            <>
+                                <FilterCpfHistoryTable items={history.items} />
 
-                            <div className="flex items-center justify-end gap-2">
-                                <Button
-                                    className="rounded-2xl"
-                                    disabled={history.page <= 1 || isHistoryLoading}
-                                    onClick={() => {
-                                        void loadHistory(history.page - 1);
-                                    }}
-                                    type="button"
-                                    variant="outline"
-                                >
-                                    Previous
-                                </Button>
-                                <span className="text-sm text-muted-foreground">
-                                    Page {history.page} of {history.totalPages}
-                                </span>
-                                <Button
-                                    className="rounded-2xl"
-                                    disabled={history.page >= history.totalPages || isHistoryLoading}
-                                    onClick={() => {
-                                        void loadHistory(history.page + 1);
-                                    }}
-                                    type="button"
-                                    variant="outline"
-                                >
-                                    Next
-                                </Button>
-                            </div>
-                        </>
-                    ) : null}
+                                <div className="flex items-center justify-end gap-2">
+                                    <Button
+                                        className="rounded-2xl"
+                                        disabled={history.page <= 1 || isHistoryLoading}
+                                        onClick={() => {
+                                            void loadHistory(history.page - 1);
+                                        }}
+                                        type="button"
+                                        variant="outline"
+                                    >
+                                        Previous
+                                    </Button>
+                                    <span className="text-sm text-muted-foreground">
+                                        Page {history.page} of {history.totalPages}
+                                    </span>
+                                    <Button
+                                        className="rounded-2xl"
+                                        disabled={history.page >= history.totalPages || isHistoryLoading}
+                                        onClick={() => {
+                                            void loadHistory(history.page + 1);
+                                        }}
+                                        type="button"
+                                        variant="outline"
+                                    >
+                                        Next
+                                    </Button>
+                                </div>
+                            </>
+                        ) : null}
 
-                    {history && history.items.length === 0 && !isHistoryLoading ? (
-                        <FriendlyMessage
-                            description="No saved CPF searches yet."
-                            title="Empty history"
-                            variant="info"
-                        />
-                    ) : null}
-                </>
-            ) : null}
+                        {history && history.items.length === 0 && !isHistoryLoading ? (
+                            <FriendlyMessage
+                                description="No saved CPF searches yet."
+                                title="Empty history"
+                                variant="info"
+                            />
+                        ) : null}
+                    </>
+                ) : null}
             </section>
         </>
     );

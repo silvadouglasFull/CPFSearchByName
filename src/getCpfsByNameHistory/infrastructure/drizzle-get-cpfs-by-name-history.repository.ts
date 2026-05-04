@@ -8,7 +8,7 @@ import {
     PaginatedGetCpfsByNameHistory,
     UpdateGetCpfsByNameHistoryInput,
 } from '@/getCpfsByNameHistory/domain/types';
-import { asc, desc, eq, sql } from 'drizzle-orm';
+import { asc, desc, eq, ilike, or, sql } from 'drizzle-orm';
 
 export class DrizzleGetCpfsByNameHistoryRepository implements GetCpfsByNameHistoryRepository {
     async create(input: CreateGetCpfsByNameHistoryInput): Promise<GetCpfsByNameHistoryRecord> {
@@ -149,6 +149,29 @@ export class DrizzleGetCpfsByNameHistoryRepository implements GetCpfsByNameHisto
             .returning({ id: getCpfsByNameSearchHistory.id });
 
         return result.length > 0;
+    }
+
+    async searchByCpfOrName(
+        query: string,
+        limit: number = 50,
+        offset: number = 0,
+    ): Promise<Array<typeof getCpfsByNameSearchRecords.$inferSelect>> {
+        const normalizedQuery = query.trim();
+        if (!normalizedQuery) {
+            return [];
+        }
+
+        return db
+            .select()
+            .from(getCpfsByNameSearchRecords)
+            .where(
+                or(
+                    ilike(getCpfsByNameSearchRecords.name, `%${normalizedQuery}%`),
+                    ilike(getCpfsByNameSearchRecords.cpf, `%${normalizedQuery}%`),
+                ),
+            )
+            .limit(limit)
+            .offset(offset);
     }
 
     async list(params: GetCpfsByNameHistoryListParams): Promise<PaginatedGetCpfsByNameHistory> {
