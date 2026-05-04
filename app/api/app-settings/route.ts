@@ -17,8 +17,8 @@ export async function GET(): Promise<NextResponse> {
 
 export async function PUT(request: Request): Promise<NextResponse> {
     try {
-        const body = (await request.json()) as Partial<AppSettingsFields>;
-        const settings = await createAppSettingsService().updateSettings(body);
+        const updates = (await request.json()) as Partial<AppSettingsFields>;
+        const settings = await createAppSettingsService().updateSettings(updates);
         return NextResponse.json({ settings }, { status: 200 });
     } catch (error) {
         const message = error instanceof Error ? error.message : 'Unknown error.';

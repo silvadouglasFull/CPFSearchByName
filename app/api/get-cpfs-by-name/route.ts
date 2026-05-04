@@ -1,5 +1,6 @@
 import { PortalRecordMapper } from '@/getCpfsByName/application/portal-record-mapper';
 import {
+    DEFAULT_RESULTS_FILE_NAME,
     FIRST_PAGE_NUMBER,
     PAGE_THROTTLE_DELAY_MS,
     TOTAL_PAGES,
@@ -9,8 +10,7 @@ import { validateSearchName } from '@/getCpfsByName/domain/search-name.utils';
 import { PortalRecord } from '@/getCpfsByName/domain/types';
 import { JsonPortalResultsWriter } from '@/getCpfsByName/infrastructure/json-portal-results.writer';
 import { PuppeteerPortalSearchClient } from '@/getCpfsByName/infrastructure/puppeteer-portal-search.client';
-import { DEFAULT_USER_SETTINGS } from '@/userSettings/domain/types';
-import { createUserSettingsService } from '@/userSettings/index';
+import { DEFAULT_APP_SETTINGS, createAppSettingsService } from '@/appSettings';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -22,21 +22,18 @@ function sseEvent(data: object): Uint8Array {
 export async function GET(request: Request): Promise<Response> {
     const { searchParams } = new URL(request.url);
     const searchName = String(searchParams.get('searchName') ?? '').trim();
-    const userIdParam = String(searchParams.get('userId') ?? '').trim();
 
-    let totalPages = TOTAL_PAGES;
-    let throttleDelayMs = PAGE_THROTTLE_DELAY_MS;
+    let settings = DEFAULT_APP_SETTINGS;
 
-    if (userIdParam) {
-        try {
-            const service = createUserSettingsService();
-            const settings = await service.getSettings(userIdParam);
-            totalPages = settings.totalPages;
-            throttleDelayMs = settings.throttleDelayMs;
-        } catch {
-            totalPages = DEFAULT_USER_SETTINGS.totalPages;
-            throttleDelayMs = DEFAULT_USER_SETTINGS.throttleDelayMs;
-        }
+    try {
+        settings = await createAppSettingsService().getSettings();
+    } catch {
+        settings = {
+            ...DEFAULT_APP_SETTINGS,
+            totalPages: TOTAL_PAGES,
+            pageThrottleDelayMs: PAGE_THROTTLE_DELAY_MS,
+            firstPageNumber: FIRST_PAGE_NUMBER,
+        };
     }
 
     const stream = new ReadableStream({
@@ -50,29 +47,43 @@ export async function GET(request: Request): Promise<Response> {
                 return;
             }
 
-            const searchClient = new PuppeteerPortalSearchClient();
-            const resultsWriter = new JsonPortalResultsWriter();
-            const mapper = new PortalRecordMapper();
+            const searchClient = new PuppeteerPortalSearchClient({
+                defaultPageSelector: settings.defaultPageSelector,
+                firstPageNumber: settings.firstPageNumber,
+                pageNavigationTimeoutMs: settings.pageNavigationTimeoutMs,
+                pageResponseTimeoutMs: settings.pageResponseTimeoutMs,
+                pageSelectorTimeoutMs: settings.pageSelectorTimeoutMs,
+                resultsPerPage: settings.resultsPerPage,
+                searchApiHostname: settings.searchApiHostname,
+                searchApiPathname: settings.searchApiPathname,
+                searchPageUrl: settings.searchPageUrl,
+            });
+            const resultsWriter = new JsonPortalResultsWriter(
+                DEFAULT_RESULTS_FILE_NAME,
+                settings.jsonOutputIndentSpaces,
+                settings.fileEncodingUtf8 as BufferEncoding,
+            );
+            const mapper = new PortalRecordMapper(settings.detailsPageUrl);
             const allRecords: PortalRecord[] = [];
 
             try {
                 await searchClient.openSearch(searchName);
 
-                for (let pageNumber = FIRST_PAGE_NUMBER; pageNumber <= totalPages; pageNumber += 1) {
-                    controller.enqueue(sseEvent({ type: 'progress', currentPage: pageNumber, totalPages }));
+                for (let pageNumber = settings.firstPageNumber; pageNumber <= settings.totalPages; pageNumber += 1) {
+                    controller.enqueue(sseEvent({ type: 'progress', currentPage: pageNumber, totalPages: settings.totalPages }));
 
                     try {
                         const pageResponse = await searchClient.collectPage(pageNumber);
                         const records = mapper.mapRecords(pageResponse.registros, pageNumber);
                         allRecords.push(...records);
-                        controller.enqueue(sseEvent({ type: 'page', currentPage: pageNumber, totalPages, records }));
+                        controller.enqueue(sseEvent({ type: 'page', currentPage: pageNumber, totalPages: settings.totalPages, records }));
                     } catch (error) {
                         const message = error instanceof Error ? error.message : 'Unknown error.';
-                        controller.enqueue(sseEvent({ type: 'page_error', currentPage: pageNumber, totalPages, message }));
+                        controller.enqueue(sseEvent({ type: 'page_error', currentPage: pageNumber, totalPages: settings.totalPages, message }));
                     }
 
-                    if (pageNumber < totalPages) {
-                        await new Promise((resolve) => setTimeout(resolve, throttleDelayMs));
+                    if (pageNumber < settings.totalPages) {
+                        await new Promise((resolve) => setTimeout(resolve, settings.pageThrottleDelayMs));
                     }
                 }
 
