@@ -2,6 +2,7 @@
 
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { cn } from '@/lib/utils';
 import { RotateCcw, Search } from 'lucide-react';
 import { FormEvent } from 'react';
 
@@ -43,40 +44,53 @@ export function HubdoCpfSearchForm({
 
     return (
         <form className="space-y-4" onSubmit={handleSubmit}>
-            <div>
-                <label className="mb-2 block text-sm font-medium" htmlFor="hubdo-cpf-input">
-                    CPF <span className="text-red-500">*</span>
-                </label>
-                <Input
-                    className="h-11 rounded-2xl"
-                    disabled={isLoading}
-                    id="hubdo-cpf-input"
-                    onChange={(event) => onCpfChange(event.target.value)}
-                    placeholder="123.456.789-01 ou 12345678901"
-                    type="text"
-                    value={cpf}
-                />
-            </div>
+            <div className="grid gap-4 lg:grid-cols-[1.2fr_0.8fr]">
+                <div className="rounded-2xl border bg-muted/20 p-4">
+                    <label className="mb-2 block text-sm font-medium" htmlFor="hubdo-cpf-input">
+                        CPF <span className="text-red-500">*</span>
+                    </label>
+                    <Input
+                        className="h-11 rounded-2xl bg-background"
+                        disabled={isLoading}
+                        id="hubdo-cpf-input"
+                        onChange={(event) => onCpfChange(event.target.value)}
+                        placeholder="123.456.789-01 ou 12345678901"
+                        type="text"
+                        value={cpf}
+                    />
+                    <p className="mt-2 text-xs text-muted-foreground">
+                        Aceita CPF com ou sem máscara. O retorno é padronizado automaticamente.
+                    </p>
+                </div>
 
-            <div>
-                <label className="mb-2 block text-sm font-medium" htmlFor="hubdo-birth-date-input">
-                    Data de Nascimento (opcional)
-                </label>
-                <Input
-                    className="h-11 rounded-2xl"
-                    disabled={isLoading}
-                    id="hubdo-birth-date-input"
-                    onChange={(event) => onBirthDateChange(event.target.value)}
-                    placeholder="DD/MM/YYYY"
-                    type="text"
-                    value={birthDate}
-                />
+                <div className="rounded-2xl border bg-muted/20 p-4">
+                    <label className="mb-2 block text-sm font-medium" htmlFor="hubdo-birth-date-input">
+                        Data de nascimento
+                    </label>
+                    <Input
+                        className="h-11 rounded-2xl bg-background"
+                        disabled={isLoading}
+                        id="hubdo-birth-date-input"
+                        onChange={(event) => onBirthDateChange(event.target.value)}
+                        placeholder="DD/MM/YYYY"
+                        type="text"
+                        value={birthDate}
+                    />
+                    <p className="mt-2 text-xs text-muted-foreground">
+                        Campo opcional para complementar a validação quando necessário.
+                    </p>
+                </div>
             </div>
 
             <fieldset className="space-y-2">
                 <legend className="text-sm font-medium">Modo de Consulta</legend>
-                <div className="flex flex-col gap-3 md:flex-row md:gap-6">
-                    <label className="flex cursor-pointer items-center gap-2">
+                <div className="grid gap-3 md:grid-cols-2">
+                    <label
+                        className={cn(
+                            'flex cursor-pointer gap-3 rounded-2xl border p-4 transition-colors',
+                            mode === 'normal' ? 'border-primary/40 bg-primary/5' : 'bg-card hover:bg-muted/40',
+                        )}
+                    >
                         <input
                             checked={mode === 'normal'}
                             disabled={isLoading}
@@ -85,9 +99,17 @@ export function HubdoCpfSearchForm({
                             type="radio"
                             value="normal"
                         />
-                        <span className="text-sm">Normal (5 créditos, até 10 min)</span>
+                        <span className="space-y-1 text-sm">
+                            <span className="block font-medium">Normal</span>
+                            <span className="block text-muted-foreground">5 créditos, indicado para consultas sem urgência imediata.</span>
+                        </span>
                     </label>
-                    <label className="flex cursor-pointer items-center gap-2">
+                    <label
+                        className={cn(
+                            'flex cursor-pointer gap-3 rounded-2xl border p-4 transition-colors',
+                            mode === 'turbo' ? 'border-primary/40 bg-primary/5' : 'bg-card hover:bg-muted/40',
+                        )}
+                    >
                         <input
                             checked={mode === 'turbo'}
                             disabled={isLoading}
@@ -96,13 +118,19 @@ export function HubdoCpfSearchForm({
                             type="radio"
                             value="turbo"
                         />
-                        <span className="text-sm">Turbo (25 créditos, 30s)</span>
+                        <span className="space-y-1 text-sm">
+                            <span className="block font-medium">Turbo</span>
+                            <span className="block text-muted-foreground">25 créditos, resposta prioritária para fluxos operacionais urgentes.</span>
+                        </span>
                     </label>
                 </div>
             </fieldset>
 
-            <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
-                Custo estimado: <strong>{estimatedCredits} créditos</strong>
+            <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-950">
+                <p className="font-medium">Estimativa de consumo</p>
+                <p className="mt-1 text-amber-900">
+                    Esta consulta deve consumir <strong>{estimatedCredits} créditos</strong>. O valor efetivo será salvo no histórico.
+                </p>
             </div>
 
             <div className="flex flex-col gap-2 pt-2 sm:flex-row">

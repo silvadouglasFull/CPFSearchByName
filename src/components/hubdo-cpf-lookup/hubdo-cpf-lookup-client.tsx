@@ -2,8 +2,9 @@
 
 import { FriendlyMessage } from '@/components/shared/friendly-message';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { HubdoCpfLookupResponse } from '@/hubdoCpf';
+import { History, SearchCheck } from 'lucide-react';
 import { useState } from 'react';
 import { HubdoCpfHistoryTable } from './hubdo-cpf-history-table';
 import { HubdoCpfResultCard } from './hubdo-cpf-result-card';
@@ -51,7 +52,7 @@ export function HubdoCpfLookupClient() {
 
             setHistoryRefreshKey((current) => current + 1);
         } catch (error) {
-            setSearchError(error instanceof Error ? error.message : 'Connection error');
+            setSearchError(error instanceof Error ? error.message : 'Falha de conexão ao consultar o serviço.');
         } finally {
             setIsSearching(false);
         }
@@ -72,30 +73,35 @@ export function HubdoCpfLookupClient() {
 
     return (
         <div className="space-y-6">
-            <div className="flex gap-2">
+            <div className="inline-flex rounded-2xl border bg-card p-1 shadow-sm">
                 <Button
-                    className="rounded-2xl"
+                    className="rounded-xl"
                     onClick={() => setActiveTab('search')}
                     type="button"
-                    variant={activeTab === 'search' ? 'default' : 'outline'}
+                    variant={activeTab === 'search' ? 'default' : 'ghost'}
                 >
+                    <SearchCheck className="mr-2 h-4 w-4" />
                     Buscar CPF
                 </Button>
                 <Button
-                    className="rounded-2xl"
+                    className="rounded-xl"
                     onClick={() => setActiveTab('history')}
                     type="button"
-                    variant={activeTab === 'history' ? 'default' : 'outline'}
+                    variant={activeTab === 'history' ? 'default' : 'ghost'}
                 >
+                    <History className="mr-2 h-4 w-4" />
                     Histórico
                 </Button>
             </div>
 
             {activeTab === 'search' ? (
                 <div className="space-y-4">
-                    <Card className="rounded-3xl shadow-sm">
+                    <Card className="rounded-3xl border shadow-sm">
                         <CardHeader>
-                            <CardTitle>Dados da Consulta</CardTitle>
+                            <CardTitle>Nova consulta</CardTitle>
+                            <CardDescription>
+                                Informe o CPF, escolha a modalidade de retorno e revise o custo estimado antes de enviar.
+                            </CardDescription>
                         </CardHeader>
                         <CardContent>
                             <HubdoCpfSearchForm
@@ -115,10 +121,18 @@ export function HubdoCpfLookupClient() {
                     </Card>
 
                     {searchError ? (
-                        <FriendlyMessage description={searchError} title="Erro na Consulta" variant="error" />
+                        <FriendlyMessage description={searchError} title="Não foi possível concluir a consulta" variant="error" />
                     ) : null}
 
                     {lastResult && lastResult.status === 'success' ? <HubdoCpfResultCard result={lastResult} /> : null}
+
+                    {!lastResult && !searchError ? (
+                        <FriendlyMessage
+                            description="Consultas concluídas ficam disponíveis no histórico para reconsulta e rastreabilidade operacional."
+                            title="Consulta com histórico automático"
+                            variant="info"
+                        />
+                    ) : null}
                 </div>
             ) : null}
 

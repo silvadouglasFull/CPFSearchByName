@@ -1,6 +1,7 @@
 'use client';
 
 import { FriendlyMessage } from '@/components/shared/friendly-message';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Search } from 'lucide-react';
@@ -92,18 +93,35 @@ export function HubdoCpfHistoryTable({
 
     return (
         <div className="space-y-4">
-            <div className="flex flex-col gap-2 sm:flex-row">
-                <Input
-                    className="h-11 rounded-2xl"
-                    disabled={isLoadingHistory}
-                    onChange={(event) => setFilterCpf(event.target.value)}
-                    placeholder="Filtrar por CPF..."
-                    type="text"
-                    value={filterCpf}
-                />
-                <Button className="h-11 rounded-2xl px-6" disabled={isLoadingHistory} onClick={handleApplyFilter}>
-                    <Search className="h-4 w-4" />
-                </Button>
+            <div className="rounded-3xl border bg-card p-4 shadow-sm md:p-5">
+                <div className="mb-4 flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+                    <div className="space-y-1">
+                        <h2 className="text-lg font-semibold">Histórico de consultas</h2>
+                        <p className="text-sm text-muted-foreground">
+                            Filtre por CPF, reveja detalhes de respostas anteriores e refaça buscas sem preencher o formulário novamente.
+                        </p>
+                    </div>
+                    {history ? (
+                        <Badge className="rounded-full self-start" variant="secondary">
+                            {history.totalItems} registros
+                        </Badge>
+                    ) : null}
+                </div>
+
+                <div className="flex flex-col gap-2 sm:flex-row">
+                    <Input
+                        className="h-11 rounded-2xl"
+                        disabled={isLoadingHistory}
+                        onChange={(event) => setFilterCpf(event.target.value)}
+                        placeholder="Filtrar por CPF..."
+                        type="text"
+                        value={filterCpf}
+                    />
+                    <Button className="h-11 rounded-2xl px-6" disabled={isLoadingHistory} onClick={handleApplyFilter}>
+                        <Search className="mr-2 h-4 w-4" />
+                        Aplicar filtro
+                    </Button>
+                </div>
             </div>
 
             {isLoadingHistory && !history ? (
@@ -111,7 +129,7 @@ export function HubdoCpfHistoryTable({
             ) : null}
 
             {history && rows.length > 0 ? (
-                <div className="overflow-x-auto rounded-lg border">
+                <div className="overflow-x-auto rounded-3xl border bg-card p-2 shadow-sm md:p-4">
                     <table className="w-full text-sm">
                         <thead className="bg-muted">
                             <tr>
@@ -130,15 +148,15 @@ export function HubdoCpfHistoryTable({
 
                                 return (
                                     <>
-                                        <tr className="border-t hover:bg-muted/50" key={item.id}>
+                                        <tr className="border-t hover:bg-muted/40" key={item.id}>
                                             <td className="p-3">{item.cpf}</td>
                                             <td className="p-3">
-                                                <span className={item.requestStatus === 'OK' ? 'text-green-600' : 'text-red-600'}>
-                                                    {item.requestStatus}
-                                                </span>
+                                                <Badge variant="outline">
+                                                    {item.requestStatus === 'OK' ? 'Concluída' : 'Falha'}
+                                                </Badge>
                                             </td>
                                             <td className="p-3">{item.responseCadastralStatus || '-'}</td>
-                                            <td className="p-3">{item.queryMode} / {formatOrigin(item.origem)}</td>
+                                            <td className="p-3">{item.queryMode === 'turbo' ? 'Turbo' : 'Normal'} / {formatOrigin(item.origem)}</td>
                                             <td className="p-3 text-center">{item.creditosConsumidos}</td>
                                             <td className="p-3 text-xs">{new Date(item.createdAt).toLocaleString('pt-BR')}</td>
                                             <td className="p-3 text-center">
@@ -179,8 +197,8 @@ export function HubdoCpfHistoryTable({
 
             {history && rows.length === 0 && !isLoadingHistory ? (
                 <FriendlyMessage
-                    description="Nenhuma consulta realizada ainda."
-                    title="Sem Histórico"
+                    description="Nenhuma consulta foi registrada até agora para os filtros informados."
+                    title="Histórico vazio"
                     variant="info"
                 />
             ) : null}
