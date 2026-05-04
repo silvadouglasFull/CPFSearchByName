@@ -50,3 +50,24 @@ export const generatorCpfHistoryRecords = pgTable('generator_cpf_history_records
     baseNineDigits: text('base_nine_digits').notNull(),
     createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
 });
+
+export const getCpfsByNameSearchHistory = pgTable('get_cpfs_by_name_search_history', {
+    id: uuid('id').defaultRandom().primaryKey(),
+    searchName: text('search_name').notNull(),
+    resultCount: integer('result_count').notNull().default(0),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+});
+
+export const getCpfsByNameSearchRecords = pgTable('get_cpfs_by_name_search_records', {
+    id: uuid('id').defaultRandom().primaryKey(),
+    searchId: uuid('search_id')
+        .notNull()
+        .references(() => getCpfsByNameSearchHistory.id, { onDelete: 'cascade' }),
+    name: text('name').notNull(),
+    cpf: text('cpf').notNull(),
+    relation: text('relation').notNull(),
+    detailsLink: text('details_link').notNull(),
+    sourcePage: integer('source_page').notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+});

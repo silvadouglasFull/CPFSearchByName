@@ -48,3 +48,20 @@ export type PageStatus =
     | { state: 'collecting' }
     | { state: 'done'; count: number }
     | { state: 'error'; message: string };
+
+export interface GetCpfsByNameHistoryRecord {
+    id: string;
+    searchName: string;
+    records: PortalRecord[];
+    resultCount: number;
+    createdAt: string;
+    updatedAt: string;
+}
+
+export interface PaginatedGetCpfsByNameHistory {
+    items: GetCpfsByNameHistoryRecord[];
+    page: number;
+    pageSize: number;
+    totalItems: number;
+    totalPages: number;
+}
