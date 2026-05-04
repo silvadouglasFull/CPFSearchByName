@@ -43,6 +43,13 @@
       "when": 1777925390346,
       "tag": "0005_woozy_chat",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1777927956694,
+      "tag": "0006_modern_omega_red",
+      "breakpoints": true
     }
   ]
 }

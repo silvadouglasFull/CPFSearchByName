@@ -15,7 +15,8 @@
     "db:migrate": "drizzle-kit migrate",
     "db:push": "drizzle-kit push",
     "db:studio": "drizzle-kit studio",
-    "db:seed": "tsx scripts/seed-app-settings.ts"
+    "db:seed": "tsx scripts/seed-app-settings.ts",
+    "db:backfill:hubdo-cpf": "tsx scripts/backfill-hubdo-cpf-encryption.ts"
   },
   "keywords": [],
   "author": "",

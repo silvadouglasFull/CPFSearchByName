@@ -1,4 +1,5 @@
-import { integer, jsonb, pgTable, text, timestamp, uuid } from 'drizzle-orm/pg-core';
+import { encryptedCpf } from '@/database/custom-types/encrypted-cpf';
+import { index, integer, jsonb, pgTable, text, timestamp, uuid } from 'drizzle-orm/pg-core';
 
 export const appSettings = pgTable('app_settings', {
     id: uuid('id').defaultRandom().primaryKey(),
@@ -72,24 +73,32 @@ export const getCpfsByNameSearchRecords = pgTable('get_cpfs_by_name_search_recor
     createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
 });
 
-export const hubdoCpfLookups = pgTable('hubdo_cpf_lookups', {
-    id: uuid('id').defaultRandom().primaryKey(),
-    cpf: text('cpf').notNull(),
-    birthDate: text('birth_date'),
-    queryMode: text('query_mode').notNull(), // 'normal' | 'turbo'
-    requestStatus: text('request_status').notNull(), // 'OK' | 'NOK'
-    errorCode: text('error_code'),
-    errorMessage: text('error_message'),
-    responseName: text('response_name'),
-    responseBirthDate: text('response_birth_date'),
-    responseCadastralStatus: text('response_cadastral_status'),
-    responseInscriptionDate: text('response_inscription_date'),
-    responseCheckDigit: text('response_check_digit'),
-    responseProof: text('response_proof'),
-    responseProofDate: text('response_proof_date'),
-    creditosConsumidos: integer('creditos_consumidos').notNull(),
-    origem: text('origem').notNull(), // 'database' | 'receita_federal' | 'turbo'
-    fullResponse: jsonb('full_response'),
-    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
-    updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
-});
+export const hubdoCpfLookups = pgTable(
+    'hubdo_cpf_lookups',
+    {
+        id: uuid('id').defaultRandom().primaryKey(),
+        cpf: text('cpf').notNull(),
+        cpfEncrypted: encryptedCpf('cpf_encrypted'),
+        cpfHash: text('cpf_hash'),
+        birthDate: text('birth_date'),
+        queryMode: text('query_mode').notNull(), // 'normal' | 'turbo'
+        requestStatus: text('request_status').notNull(), // 'OK' | 'NOK'
+        errorCode: text('error_code'),
+        errorMessage: text('error_message'),
+        responseName: text('response_name'),
+        responseBirthDate: text('response_birth_date'),
+        responseCadastralStatus: text('response_cadastral_status'),
+        responseInscriptionDate: text('response_inscription_date'),
+        responseCheckDigit: text('response_check_digit'),
+        responseProof: text('response_proof'),
+        responseProofDate: text('response_proof_date'),
+        creditosConsumidos: integer('creditos_consumidos').notNull(),
+        origem: text('origem').notNull(), // 'database' | 'receita_federal' | 'turbo'
+        fullResponse: jsonb('full_response'),
+        createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+        updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+    },
+    (table) => ({
+        cpfHashIdx: index('hubdo_cpf_lookups_cpf_hash_idx').on(table.cpfHash),
+    }),
+);

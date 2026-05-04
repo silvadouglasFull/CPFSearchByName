@@ -12,14 +12,20 @@ import {
     HubdoCpfLookupRepository,
     PaginatedHubdoCpfLookupHistory,
 } from '@/hubdoCpf/domain/types';
+import { hashCpf, isValidCpf, normalizeCpf } from '@/security/cpf-protection';
 import { desc, eq, ilike, sql } from 'drizzle-orm';
 
 export class DrizzleHubdoCpfLookupRepository implements HubdoCpfLookupRepository {
     async save(lookup: CreateHubdoCpfLookupInput): Promise<HubdoCpfLookupRecord> {
+        const normalizedCpf = normalizeCpf(lookup.cpf);
+        const hasValidCpf = isValidCpf(normalizedCpf);
+
         const inserted = await db
             .insert(hubdoCpfLookups)
             .values({
-                cpf: lookup.cpf,
+                cpf: normalizedCpf,
+                cpfEncrypted: hasValidCpf ? normalizedCpf : null,
+                cpfHash: hasValidCpf ? hashCpf(normalizedCpf) : null,
                 birthDate: lookup.birthDate,
                 queryMode: lookup.queryMode,
                 requestStatus: lookup.requestStatus,
@@ -61,20 +67,30 @@ export class DrizzleHubdoCpfLookupRepository implements HubdoCpfLookupRepository
     }
 
     async listByCpf(cpf: string): Promise<HubdoCpfLookupRecord[]> {
+        const normalizedCpf = normalizeCpf(cpf);
+        const whereCondition = isValidCpf(normalizedCpf)
+            ? eq(hubdoCpfLookups.cpfHash, hashCpf(normalizedCpf))
+            : eq(hubdoCpfLookups.cpf, normalizedCpf);
+
         const records = await db
             .select()
             .from(hubdoCpfLookups)
-            .where(eq(hubdoCpfLookups.cpf, cpf))
+            .where(whereCondition)
             .orderBy(desc(hubdoCpfLookups.createdAt));
 
         return records.map((record) => this.mapRecord(record));
     }
 
     async getLatestByCpf(cpf: string): Promise<HubdoCpfLookupRecord | null> {
+        const normalizedCpf = normalizeCpf(cpf);
+        const whereCondition = isValidCpf(normalizedCpf)
+            ? eq(hubdoCpfLookups.cpfHash, hashCpf(normalizedCpf))
+            : eq(hubdoCpfLookups.cpf, normalizedCpf);
+
         const records = await db
             .select()
             .from(hubdoCpfLookups)
-            .where(eq(hubdoCpfLookups.cpf, cpf))
+            .where(whereCondition)
             .orderBy(desc(hubdoCpfLookups.createdAt))
             .limit(1);
 
@@ -120,7 +136,7 @@ export class DrizzleHubdoCpfLookupRepository implements HubdoCpfLookupRepository
     private mapRecord(record: typeof hubdoCpfLookups.$inferSelect): HubdoCpfLookupRecord {
         return {
             id: record.id,
-            cpf: record.cpf,
+            cpf: record.cpfEncrypted ?? record.cpf,
             birthDate: record.birthDate ?? undefined,
             queryMode: record.queryMode as 'normal' | 'turbo',
             requestStatus: record.requestStatus as 'OK' | 'NOK',

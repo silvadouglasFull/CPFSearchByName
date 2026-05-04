@@ -15,6 +15,7 @@ import {
     PaginatedHubdoCpfLookupHistory,
 } from '@/hubdoCpf/domain/types';
 import { HubdoHttpClient } from '@/hubdoCpf/infrastructure/http-hubdo-client';
+import { formatCpf, normalizeCpf } from '@/security/cpf-protection';
 
 export class HubdoCpfLookupService {
     constructor(
@@ -23,7 +24,7 @@ export class HubdoCpfLookupService {
     ) {}
 
     async lookup(request: HubdoCpfLookupRequest): Promise<HubdoCpfLookupResponse> {
-        const normalizedCpf = this.normalizeCpf(request.cpf);
+        const normalizedCpf = normalizeCpf(request.cpf);
         const turbo = request.mode === 'turbo';
 
         try {
@@ -74,7 +75,7 @@ export class HubdoCpfLookupService {
     }
 
     async listHistory(params: HubdoCpfLookupHistoryListParams): Promise<PaginatedHubdoCpfLookupHistory> {
-        const normalizedCpf = params.cpf ? this.normalizeCpf(params.cpf) : undefined;
+        const normalizedCpf = params.cpf ? normalizeCpf(params.cpf) : undefined;
 
         return this.repository.list({
             page: params.page,
@@ -135,7 +136,7 @@ export class HubdoCpfLookupService {
     private mapSuccessResponse(record: HubdoCpfLookupRecord): HubdoCpfLookupResponse {
         return {
             status: 'success',
-            cpf: this.formatCpf(record.cpf),
+            cpf: formatCpf(record.cpf),
             nome: record.responseName,
             dataNascimento: record.responseBirthDate,
             situacaoCadastral: record.responseCadastralStatus,
@@ -166,17 +167,5 @@ export class HubdoCpfLookupService {
         // If consumed 1 credit, likely from database cache
         if (rawResponse.consumed === 1) return 'database';
         return 'receita_federal';
-    }
-
-    private normalizeCpf(cpf: string): string {
-        return cpf.replace(/\D/g, '');
-    }
-
-    private formatCpf(cpf: string): string {
-        const normalized = this.normalizeCpf(cpf);
-        if (normalized.length !== 11) {
-            return normalized;
-        }
-        return `${normalized.substring(0, 3)}.${normalized.substring(3, 6)}.${normalized.substring(6, 9)}-${normalized.substring(9)}`;
     }
 }
