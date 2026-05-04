@@ -1,4 +1,4 @@
-import { integer, pgTable, text, timestamp, uuid } from 'drizzle-orm/pg-core';
+import { integer, jsonb, pgTable, text, timestamp, uuid } from 'drizzle-orm/pg-core';
 
 export const appSettings = pgTable('app_settings', {
     id: uuid('id').defaultRandom().primaryKey(),
@@ -18,6 +18,15 @@ export const appSettings = pgTable('app_settings', {
     searchApiHostname: text('search_api_hostname').notNull().default('busca.portaldatransparencia.gov.br'),
     searchApiPathname: text('search_api_pathname').notNull().default('/busca/pessoa-fisica'),
     defaultPageSelector: text('default_page_selector').notNull().default('#paginacao li[data-lp="1"] a'),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+});
+
+export const filterCpfSearchHistory = pgTable('filter_cpf_search_history', {
+    id: uuid('id').defaultRandom().primaryKey(),
+    searchTerm: text('search_term').notNull(),
+    resultRecords: jsonb('result_records').notNull(),
+    resultCount: integer('result_count').notNull().default(0),
     createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
 });

@@ -8,6 +8,13 @@
       "when": 1777917227807,
       "tag": "0000_hesitant_havok",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1777919935507,
+      "tag": "0001_perpetual_starfox",
+      "breakpoints": true
     }
   ]
 }
