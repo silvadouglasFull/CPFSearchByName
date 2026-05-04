@@ -7,10 +7,12 @@ import { db } from '@/database/db';
 import { hubdoCpfLookups } from '@/database/schema';
 import {
     CreateHubdoCpfLookupInput,
+    HubdoCpfLookupHistoryListParams,
     HubdoCpfLookupRecord,
     HubdoCpfLookupRepository,
+    PaginatedHubdoCpfLookupHistory,
 } from '@/hubdoCpf/domain/types';
-import { desc, eq } from 'drizzle-orm';
+import { desc, eq, ilike, sql } from 'drizzle-orm';
 
 export class DrizzleHubdoCpfLookupRepository implements HubdoCpfLookupRepository {
     async save(lookup: CreateHubdoCpfLookupInput): Promise<HubdoCpfLookupRecord> {
@@ -83,6 +85,38 @@ export class DrizzleHubdoCpfLookupRepository implements HubdoCpfLookupRepository
         return this.mapRecord(records[0]);
     }
 
+    async list(params: HubdoCpfLookupHistoryListParams): Promise<PaginatedHubdoCpfLookupHistory> {
+        const page = Math.max(1, params.page);
+        const pageSize = Math.max(1, params.pageSize);
+        const offset = (page - 1) * pageSize;
+        const cpfFilter = params.cpf?.trim();
+        const whereCondition = cpfFilter ? ilike(hubdoCpfLookups.cpf, `%${cpfFilter.replace(/\D/g, '')}%`) : undefined;
+
+        const itemsResult = await db
+            .select()
+            .from(hubdoCpfLookups)
+            .where(whereCondition)
+            .orderBy(desc(hubdoCpfLookups.createdAt))
+            .limit(pageSize)
+            .offset(offset);
+
+        const totalResult = await db
+            .select({ value: sql<number>`count(*)` })
+            .from(hubdoCpfLookups)
+            .where(whereCondition);
+
+        const totalItems = Number(totalResult[0]?.value ?? 0);
+        const totalPages = Math.max(1, Math.ceil(totalItems / pageSize));
+
+        return {
+            items: itemsResult.map((record) => this.mapRecord(record)),
+            page,
+            pageSize,
+            totalItems,
+            totalPages,
+        };
+    }
+
     private mapRecord(record: typeof hubdoCpfLookups.$inferSelect): HubdoCpfLookupRecord {
         return {
             id: record.id,
@@ -101,7 +135,7 @@ export class DrizzleHubdoCpfLookupRepository implements HubdoCpfLookupRepository
             responseProofDate: record.responseProofDate ?? undefined,
             creditosConsumidos: record.creditosConsumidos,
             origem: record.origem,
-            fullResponse: record.fullResponse as Record<string, any> | undefined,
+            fullResponse: record.fullResponse as Record<string, unknown> | undefined,
             createdAt: record.createdAt,
             updatedAt: record.updatedAt,
         };

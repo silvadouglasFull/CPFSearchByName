@@ -43,7 +43,7 @@ export interface HubdoCpfLookupRecord {
     responseProofDate?: string;
     creditosConsumidos: number;
     origem: string;
-    fullResponse?: Record<string, any>;
+    fullResponse?: Record<string, unknown>;
     createdAt: Date;
     updatedAt: Date;
 }
@@ -64,7 +64,21 @@ export interface CreateHubdoCpfLookupInput {
     responseProofDate?: string;
     creditosConsumidos: number;
     origem: string;
-    fullResponse?: Record<string, any>;
+    fullResponse?: Record<string, unknown>;
+}
+
+export interface HubdoCpfLookupHistoryListParams {
+    page: number;
+    pageSize: number;
+    cpf?: string;
+}
+
+export interface PaginatedHubdoCpfLookupHistory {
+    items: HubdoCpfLookupRecord[];
+    page: number;
+    pageSize: number;
+    totalItems: number;
+    totalPages: number;
 }
 
 // HubDo API Response (raw)
@@ -91,6 +105,7 @@ export interface HubdoCpfLookupRepository {
     getById(id: string): Promise<HubdoCpfLookupRecord | null>;
     listByCpf(cpf: string): Promise<HubdoCpfLookupRecord[]>;
     getLatestByCpf(cpf: string): Promise<HubdoCpfLookupRecord | null>;
+    list(params: HubdoCpfLookupHistoryListParams): Promise<PaginatedHubdoCpfLookupHistory>;
 }
 
 // Error classes

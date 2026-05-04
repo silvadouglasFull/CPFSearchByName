@@ -6,11 +6,13 @@
 import {
     CreateHubdoCpfLookupInput,
     HubdoCpfError,
+    HubdoCpfLookupHistoryListParams,
     HubdoCpfLookupRecord,
     HubdoCpfLookupRepository,
     HubdoCpfLookupRequest,
     HubdoCpfLookupResponse,
     HubdoRawResponse,
+    PaginatedHubdoCpfLookupHistory,
 } from '@/hubdoCpf/domain/types';
 import { HubdoHttpClient } from '@/hubdoCpf/infrastructure/http-hubdo-client';
 
@@ -40,7 +42,7 @@ export class HubdoCpfLookupService {
                 rawResponse,
             );
 
-            return this.mapSuccessResponse(persistedRecord, rawResponse);
+            return this.mapSuccessResponse(persistedRecord);
         } catch (error) {
             if (error instanceof HubdoCpfError) {
                 // Persist error attempt
@@ -71,6 +73,16 @@ export class HubdoCpfLookupService {
         }
     }
 
+    async listHistory(params: HubdoCpfLookupHistoryListParams): Promise<PaginatedHubdoCpfLookupHistory> {
+        const normalizedCpf = params.cpf ? this.normalizeCpf(params.cpf) : undefined;
+
+        return this.repository.list({
+            page: params.page,
+            pageSize: params.pageSize,
+            cpf: normalizedCpf,
+        });
+    }
+
     private async persistSuccessResponse(
         cpf: string,
         birthDate: string | undefined,
@@ -84,7 +96,7 @@ export class HubdoCpfLookupService {
             requestStatus: rawResponse.return,
             creditosConsumidos: rawResponse.consumed,
             origem: this.determineOrigin(rawResponse, turbo),
-            fullResponse: rawResponse as Record<string, any>,
+            fullResponse: rawResponse as unknown as Record<string, unknown>,
         };
 
         if (rawResponse.return === 'OK' && rawResponse.result) {
@@ -120,10 +132,7 @@ export class HubdoCpfLookupService {
         return this.repository.save(input);
     }
 
-    private mapSuccessResponse(
-        record: HubdoCpfLookupRecord,
-        rawResponse: HubdoRawResponse,
-    ): HubdoCpfLookupResponse {
+    private mapSuccessResponse(record: HubdoCpfLookupRecord): HubdoCpfLookupResponse {
         return {
             status: 'success',
             cpf: this.formatCpf(record.cpf),

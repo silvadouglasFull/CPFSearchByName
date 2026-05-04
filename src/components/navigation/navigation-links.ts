@@ -1,4 +1,4 @@
-import { Home, Search, Settings, UserSearch, WandSparkles } from 'lucide-react';
+import { CheckCircle2, Home, Search, Settings, UserSearch, WandSparkles } from 'lucide-react';
 
 export interface NavigationLink {
     label: string;
@@ -31,6 +31,12 @@ export const NAVIGATION_LINKS: NavigationLink[] = [
         href: '/get-cpfs-by-name',
         icon: UserSearch,
         description: 'Collect CPF records from portal pages by person name.',
+    },
+    {
+        label: 'Verificação de CPF',
+        href: '/hubdo-cpf-lookup',
+        icon: CheckCircle2,
+        description: 'Consulte CPF diretamente na Receita Federal via HubDo.',
     },
     {
         label: 'App Settings',
