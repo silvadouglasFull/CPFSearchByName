@@ -1,0 +1,21 @@
+CREATE TABLE "hubdo_cpf_lookups" (
+	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+	"cpf" text NOT NULL,
+	"birth_date" text,
+	"query_mode" text NOT NULL,
+	"request_status" text NOT NULL,
+	"error_code" text,
+	"error_message" text,
+	"response_name" text,
+	"response_birth_date" text,
+	"response_cadastral_status" text,
+	"response_inscription_date" text,
+	"response_check_digit" text,
+	"response_proof" text,
+	"response_proof_date" text,
+	"creditos_consumidos" integer NOT NULL,
+	"origem" text NOT NULL,
+	"full_response" jsonb,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
+	"updated_at" timestamp with time zone DEFAULT now() NOT NULL
+);
