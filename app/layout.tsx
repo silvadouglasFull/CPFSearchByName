@@ -14,7 +14,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "verifyDocs",
+  title: "Verify Docs",
   description: "CPF search and filtering application",
 };
 
