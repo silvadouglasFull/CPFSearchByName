@@ -1,14 +1,15 @@
 import { FilterByCpfService } from '@/filterByCpf/application/filter-by-cpf.service';
 import { JsonResultsRepository } from '@/filterByCpf/infrastructure/json-results.repository';
 import { NextResponse } from 'next/server';
-import { fileURLToPath } from 'node:url';
+import path from 'node:path';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 const MIN_PARTIAL_CPF_LENGTH = 1;
-const RESULTS_FILE_PATH = fileURLToPath(
-    new URL('../../../resultados_portal.json', import.meta.url),
+const RESULTS_FILE_PATH = path.join(
+    /*turbopackIgnore: true*/ process.cwd(),
+    'resultados_portal.json',
 );
 
 export async function GET(request: Request): Promise<NextResponse> {
@@ -28,6 +29,15 @@ export async function GET(request: Request): Promise<NextResponse> {
         const records = service.filterByPartialCpf(partialCpf);
         return NextResponse.json({ records }, { status: 200 });
     } catch (error) {
+        if ((error as NodeJS.ErrnoException)?.code === 'ENOENT') {
+            return NextResponse.json(
+                {
+                    error: 'Data source not found. Run the collection flow first to generate resultados_portal.json.',
+                },
+                { status: 404 },
+            );
+        }
+
         const message = error instanceof Error ? error.message : 'Unknown error.';
         return NextResponse.json({ error: message }, { status: 500 });
     }

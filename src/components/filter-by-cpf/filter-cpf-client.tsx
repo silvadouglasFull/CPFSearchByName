@@ -2,11 +2,7 @@
 
 import { FilterCpfResultsTable } from '@/components/filter-by-cpf/filter-cpf-results-table';
 import { FilterByCpfApiError, FilterByCpfApiResponse, PortalResultRecord } from '@/components/filter-by-cpf/types';
-import {
-    Alert,
-    AlertDescription,
-    AlertTitle,
-} from '@/components/ui/alert';
+import { FriendlyMessage } from '@/components/shared/friendly-message';
 import { Button } from '@/components/ui/button';
 import {
     Card,
@@ -93,19 +89,19 @@ export function FilterCpfClient() {
             </Card>
 
             {errorMessage ? (
-                <Alert className="rounded-2xl border-destructive/50 text-destructive">
-                    <AlertTitle>Request failed</AlertTitle>
-                    <AlertDescription>{errorMessage}</AlertDescription>
-                </Alert>
+                <FriendlyMessage
+                    description={errorMessage}
+                    title="Request failed"
+                    variant="error"
+                />
             ) : null}
 
             {hasSearched && !isLoading && records.length === 0 && !errorMessage ? (
-                <Alert className="rounded-2xl">
-                    <AlertTitle>No matching records</AlertTitle>
-                    <AlertDescription>
-                        No CPF records matched this partial value in resultados_portal.json.
-                    </AlertDescription>
-                </Alert>
+                <FriendlyMessage
+                    description="No CPF records matched this partial value in resultados_portal.json."
+                    title="No matching records"
+                    variant="info"
+                />
             ) : null}
 
             {records.length > 0 ? <FilterCpfResultsTable records={records} /> : null}
