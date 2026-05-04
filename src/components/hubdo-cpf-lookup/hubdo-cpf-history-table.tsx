@@ -20,9 +20,9 @@ interface HubdoCpfHistoryTableProps {
 }
 
 function formatOrigin(origin: string): string {
-    if (origin === 'database') return 'Banco';
+    if (origin === 'database') return 'Database';
     if (origin === 'turbo') return 'Turbo';
-    return 'Receita';
+    return 'Revenue';
 }
 
 export function HubdoCpfHistoryTable({
@@ -88,7 +88,7 @@ export function HubdoCpfHistoryTable({
     const rows = useMemo(() => history?.items ?? [], [history]);
 
     if (error) {
-        return <FriendlyMessage description={error} title="Erro ao Carregar Histórico" variant="error" />;
+        return <FriendlyMessage description={error} title="Unable to load history" variant="error" />;
     }
 
     return (
@@ -96,14 +96,14 @@ export function HubdoCpfHistoryTable({
             <div className="rounded-3xl border bg-card p-4 shadow-sm md:p-5">
                 <div className="mb-4 flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
                     <div className="space-y-1">
-                        <h2 className="text-lg font-semibold">Histórico de consultas</h2>
+                        <h2 className="text-lg font-semibold">Lookup history</h2>
                         <p className="text-sm text-muted-foreground">
-                            Filtre por CPF, reveja detalhes de respostas anteriores e refaça buscas sem preencher o formulário novamente.
+                            Filter by CPF, review details from previous responses, and rerun searches without filling the form again.
                         </p>
                     </div>
                     {history ? (
                         <Badge className="rounded-full self-start" variant="secondary">
-                            {history.totalItems} registros
+                            {history.totalItems} records
                         </Badge>
                     ) : null}
                 </div>
@@ -113,19 +113,19 @@ export function HubdoCpfHistoryTable({
                         className="h-11 rounded-2xl"
                         disabled={isLoadingHistory}
                         onChange={(event) => setFilterCpf(event.target.value)}
-                        placeholder="Filtrar por CPF..."
+                        placeholder="Filter by CPF..."
                         type="text"
                         value={filterCpf}
                     />
                     <Button className="h-11 rounded-2xl px-6" disabled={isLoadingHistory} onClick={handleApplyFilter}>
                         <Search className="mr-2 h-4 w-4" />
-                        Aplicar filtro
+                        Apply filter
                     </Button>
                 </div>
             </div>
 
             {isLoadingHistory && !history ? (
-                <FriendlyMessage description="Carregando histórico..." title="Carregando" variant="info" />
+                <FriendlyMessage description="Loading lookup history..." title="Loading" variant="info" />
             ) : null}
 
             {history && rows.length > 0 ? (
@@ -135,11 +135,11 @@ export function HubdoCpfHistoryTable({
                             <tr>
                                 <th className="p-3 text-left font-medium">CPF</th>
                                 <th className="p-3 text-left font-medium">Status</th>
-                                <th className="p-3 text-left font-medium">Situação</th>
-                                <th className="p-3 text-left font-medium">Modo</th>
-                                <th className="p-3 text-center font-medium">Créditos</th>
-                                <th className="p-3 text-left font-medium">Data</th>
-                                <th className="p-3 text-center font-medium">Ações</th>
+                                <th className="p-3 text-left font-medium">Situation</th>
+                                <th className="p-3 text-left font-medium">Mode</th>
+                                <th className="p-3 text-center font-medium">Credits</th>
+                                <th className="p-3 text-left font-medium">Date</th>
+                                <th className="p-3 text-center font-medium">Actions</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -152,13 +152,13 @@ export function HubdoCpfHistoryTable({
                                             <td className="p-3">{item.cpf}</td>
                                             <td className="p-3">
                                                 <Badge variant="outline">
-                                                    {item.requestStatus === 'OK' ? 'Concluída' : 'Falha'}
+                                                    {item.requestStatus === 'OK' ? 'Completed' : 'Failed'}
                                                 </Badge>
                                             </td>
                                             <td className="p-3">{item.responseCadastralStatus || '-'}</td>
                                             <td className="p-3">{item.queryMode === 'turbo' ? 'Turbo' : 'Normal'} / {formatOrigin(item.origem)}</td>
                                             <td className="p-3 text-center">{item.creditosConsumidos}</td>
-                                            <td className="p-3 text-xs">{new Date(item.createdAt).toLocaleString('pt-BR')}</td>
+                                            <td className="p-3 text-xs">{new Date(item.createdAt).toLocaleString('en-US')}</td>
                                             <td className="p-3 text-center">
                                                 <div className="flex items-center justify-center gap-2">
                                                     <Button
@@ -167,7 +167,7 @@ export function HubdoCpfHistoryTable({
                                                         type="button"
                                                         variant="ghost"
                                                     >
-                                                        {isExpanded ? 'Ocultar' : 'Detalhes'}
+                                                        {isExpanded ? 'Hide' : 'Details'}
                                                     </Button>
                                                     <Button
                                                         onClick={() => onSelectCpf(item.cpf)}
@@ -175,7 +175,7 @@ export function HubdoCpfHistoryTable({
                                                         type="button"
                                                         variant="ghost"
                                                     >
-                                                        Re-buscar
+                                                        Search again
                                                     </Button>
                                                 </div>
                                             </td>
@@ -197,8 +197,8 @@ export function HubdoCpfHistoryTable({
 
             {history && rows.length === 0 && !isLoadingHistory ? (
                 <FriendlyMessage
-                    description="Nenhuma consulta foi registrada até agora para os filtros informados."
-                    title="Histórico vazio"
+                    description="No lookups have been recorded yet for the current filters."
+                    title="Empty history"
                     variant="info"
                 />
             ) : null}
@@ -212,10 +212,10 @@ export function HubdoCpfHistoryTable({
                         type="button"
                         variant="outline"
                     >
-                        Anterior
+                        Previous
                     </Button>
                     <span className="text-sm text-muted-foreground">
-                        Página {page} de {history.totalPages}
+                        Page {page} of {history.totalPages}
                     </span>
                     <Button
                         className="rounded-2xl"
@@ -224,7 +224,7 @@ export function HubdoCpfHistoryTable({
                         type="button"
                         variant="outline"
                     >
-                        Próxima
+                        Next
                     </Button>
                 </div>
             ) : null}
@@ -236,27 +236,27 @@ function HistoryDetails({ item }: { item: HubdoCpfHistoryItem }) {
     return (
         <div className="grid gap-3 md:grid-cols-2">
             <div>
-                <p className="text-xs text-muted-foreground">Nome</p>
+                <p className="text-xs text-muted-foreground">Name</p>
                 <p className="font-medium">{item.responseName || '-'}</p>
             </div>
             <div>
-                <p className="text-xs text-muted-foreground">Data de Nascimento</p>
+                <p className="text-xs text-muted-foreground">Birth date</p>
                 <p className="font-medium">{item.responseBirthDate || item.birthDate || '-'}</p>
             </div>
             <div>
-                <p className="text-xs text-muted-foreground">Data de Inscrição</p>
+                <p className="text-xs text-muted-foreground">Registration date</p>
                 <p className="font-medium">{item.responseInscriptionDate || '-'}</p>
             </div>
             <div>
-                <p className="text-xs text-muted-foreground">Dígito Verificador</p>
+                <p className="text-xs text-muted-foreground">Check digit</p>
                 <p className="font-medium">{item.responseCheckDigit || '-'}</p>
             </div>
             <div>
-                <p className="text-xs text-muted-foreground">Comprovante</p>
+                <p className="text-xs text-muted-foreground">Proof code</p>
                 <p className="font-medium">{item.responseProof || '-'}</p>
             </div>
             <div>
-                <p className="text-xs text-muted-foreground">Erro</p>
+                <p className="text-xs text-muted-foreground">Error</p>
                 <p className="font-medium">{item.errorMessage || item.errorCode || '-'}</p>
             </div>
         </div>

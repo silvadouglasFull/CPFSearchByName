@@ -46,7 +46,7 @@ export function HubdoCpfLookupClient() {
             setLastResult(data);
 
             if (!response.ok || data.status === 'error') {
-                setSearchError(data.message || 'Erro ao consultar CPF.');
+                setSearchError(data.message || 'Unable to check the CPF.');
                 return;
             }
 
@@ -81,7 +81,7 @@ export function HubdoCpfLookupClient() {
                     variant={activeTab === 'search' ? 'default' : 'ghost'}
                 >
                     <SearchCheck className="mr-2 h-4 w-4" />
-                    Buscar CPF
+                    Search CPF
                 </Button>
                 <Button
                     className="rounded-xl"
@@ -90,7 +90,7 @@ export function HubdoCpfLookupClient() {
                     variant={activeTab === 'history' ? 'default' : 'ghost'}
                 >
                     <History className="mr-2 h-4 w-4" />
-                    Histórico
+                    History
                 </Button>
             </div>
 
@@ -98,9 +98,9 @@ export function HubdoCpfLookupClient() {
                 <div className="space-y-4">
                     <Card className="rounded-3xl border shadow-sm">
                         <CardHeader>
-                            <CardTitle>Nova consulta</CardTitle>
+                            <CardTitle>New lookup</CardTitle>
                             <CardDescription>
-                                Informe o CPF, escolha a modalidade de retorno e revise o custo estimado antes de enviar.
+                                Enter the CPF, choose the response mode, and review the estimated cost before submitting.
                             </CardDescription>
                         </CardHeader>
                         <CardContent>
@@ -121,15 +121,15 @@ export function HubdoCpfLookupClient() {
                     </Card>
 
                     {searchError ? (
-                        <FriendlyMessage description={searchError} title="Não foi possível concluir a consulta" variant="error" />
+                        <FriendlyMessage description={searchError} title="The lookup could not be completed" variant="error" />
                     ) : null}
 
                     {lastResult && lastResult.status === 'success' ? <HubdoCpfResultCard result={lastResult} /> : null}
 
                     {!lastResult && !searchError ? (
                         <FriendlyMessage
-                            description="Consultas concluídas ficam disponíveis no histórico para reconsulta e rastreabilidade operacional."
-                            title="Consulta com histórico automático"
+                            description="Completed lookups remain available in history for follow-up checks and operational traceability."
+                            title="Automatic lookup history"
                             variant="info"
                         />
                     ) : null}

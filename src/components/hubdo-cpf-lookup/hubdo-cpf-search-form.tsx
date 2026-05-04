@@ -54,18 +54,18 @@ export function HubdoCpfSearchForm({
                         disabled={isLoading}
                         id="hubdo-cpf-input"
                         onChange={(event) => onCpfChange(event.target.value)}
-                        placeholder="123.456.789-01 ou 12345678901"
+                        placeholder="123.456.789-01 or 12345678901"
                         type="text"
                         value={cpf}
                     />
                     <p className="mt-2 text-xs text-muted-foreground">
-                        Aceita CPF com ou sem máscara. O retorno é padronizado automaticamente.
+                        Accepts CPF values with or without formatting. Returned data is standardized automatically.
                     </p>
                 </div>
 
                 <div className="rounded-2xl border bg-muted/20 p-4">
                     <label className="mb-2 block text-sm font-medium" htmlFor="hubdo-birth-date-input">
-                        Data de nascimento
+                        Birth date
                     </label>
                     <Input
                         className="h-11 rounded-2xl bg-background"
@@ -77,13 +77,13 @@ export function HubdoCpfSearchForm({
                         value={birthDate}
                     />
                     <p className="mt-2 text-xs text-muted-foreground">
-                        Campo opcional para complementar a validação quando necessário.
+                        Optional field to strengthen validation when needed.
                     </p>
                 </div>
             </div>
 
             <fieldset className="space-y-2">
-                <legend className="text-sm font-medium">Modo de Consulta</legend>
+                <legend className="text-sm font-medium">Lookup mode</legend>
                 <div className="grid gap-3 md:grid-cols-2">
                     <label
                         className={cn(
@@ -101,7 +101,7 @@ export function HubdoCpfSearchForm({
                         />
                         <span className="space-y-1 text-sm">
                             <span className="block font-medium">Normal</span>
-                            <span className="block text-muted-foreground">5 créditos, indicado para consultas sem urgência imediata.</span>
+                            <span className="block text-muted-foreground">5 credits, best for lookups without immediate urgency.</span>
                         </span>
                     </label>
                     <label
@@ -120,23 +120,23 @@ export function HubdoCpfSearchForm({
                         />
                         <span className="space-y-1 text-sm">
                             <span className="block font-medium">Turbo</span>
-                            <span className="block text-muted-foreground">25 créditos, resposta prioritária para fluxos operacionais urgentes.</span>
+                            <span className="block text-muted-foreground">25 credits, prioritized response for urgent operational flows.</span>
                         </span>
                     </label>
                 </div>
             </fieldset>
 
             <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-950">
-                <p className="font-medium">Estimativa de consumo</p>
+                <p className="font-medium">Estimated consumption</p>
                 <p className="mt-1 text-amber-900">
-                    Esta consulta deve consumir <strong>{estimatedCredits} créditos</strong>. O valor efetivo será salvo no histórico.
+                    This lookup should consume <strong>{estimatedCredits} credits</strong>. The actual amount will be saved to history.
                 </p>
             </div>
 
             <div className="flex flex-col gap-2 pt-2 sm:flex-row">
                 <Button className="h-11 rounded-2xl px-6" disabled={!canSearch || isLoading} type="submit">
                     <Search className="mr-2 h-4 w-4" />
-                    {isLoading ? 'Buscando...' : 'Buscar CPF'}
+                    {isLoading ? 'Searching...' : 'Search CPF'}
                 </Button>
                 <Button
                     className="h-11 rounded-2xl px-6"
@@ -146,7 +146,7 @@ export function HubdoCpfSearchForm({
                     variant="outline"
                 >
                     <RotateCcw className="mr-2 h-4 w-4" />
-                    Limpar
+                    Clear
                 </Button>
             </div>
         </form>

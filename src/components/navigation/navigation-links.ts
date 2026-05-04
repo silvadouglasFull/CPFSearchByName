@@ -33,10 +33,10 @@ export const NAVIGATION_LINKS: NavigationLink[] = [
         description: 'Collect CPF records from portal pages by person name.',
     },
     {
-        label: 'Verificação de CPF',
+        label: 'CPF Verification',
         href: '/hubdo-cpf-lookup',
         icon: CheckCircle2,
-        description: 'Consulte CPF diretamente na Receita Federal via HubDo.',
+        description: 'Check CPF records directly through Federal Revenue via HubDo.',
     },
     {
         label: 'App Settings',
