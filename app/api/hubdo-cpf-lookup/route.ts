@@ -4,6 +4,10 @@
  */
 
 import { createHubdoCpfLookupService } from '@/hubdoCpf';
+import {
+    assertCpfProtectionRuntimeConfiguration,
+    isCpfProtectionConfigurationError,
+} from '@/security/cpf-protection';
 import { NextResponse } from 'next/server';
 
 export const runtime = 'nodejs';
@@ -11,6 +15,8 @@ export const dynamic = 'force-dynamic';
 
 export async function GET(request: Request): Promise<NextResponse> {
     try {
+        assertCpfProtectionRuntimeConfiguration();
+
         const { searchParams } = new URL(request.url);
         const cpf = (searchParams.get('cpf') || '').trim();
         const birthDate = (searchParams.get('birthDate') || '').trim();
@@ -51,9 +57,26 @@ export async function GET(request: Request): Promise<NextResponse> {
         });
 
         // Return response with appropriate status code
-        const statusCode = response.status === 'success' ? 200 : 400;
+        const statusCode =
+            response.status === 'success'
+                ? 200
+                : response.errorCode === 'SECURITY_KEYS_MISSING'
+                    ? 500
+                    : 400;
         return NextResponse.json(response, { status: statusCode });
     } catch (error) {
+        if (isCpfProtectionConfigurationError(error)) {
+            return NextResponse.json(
+                {
+                    status: 'error',
+                    errorCode: 'SECURITY_KEYS_MISSING',
+                    message: 'CPF encryption keys are missing or invalid. Set CPF_ENCRYPTION_KEY and CPF_HASH_KEY.',
+                    creditosConsumidos: 0,
+                },
+                { status: 500 },
+            );
+        }
+
         const message = error instanceof Error ? error.message : 'Unknown error';
         return NextResponse.json(
             {

@@ -1,4 +1,8 @@
 import { createHubdoCpfLookupService } from '@/hubdoCpf';
+import {
+    assertCpfProtectionRuntimeConfiguration,
+    isCpfProtectionConfigurationError,
+} from '@/security/cpf-protection';
 import { NextResponse } from 'next/server';
 
 export const runtime = 'nodejs';
@@ -20,6 +24,8 @@ function toPositiveInt(value: string | null, fallback: number): number {
 
 export async function GET(request: Request): Promise<NextResponse> {
     try {
+        assertCpfProtectionRuntimeConfiguration();
+
         const { searchParams } = new URL(request.url);
         const page = toPositiveInt(searchParams.get('page'), DEFAULT_PAGE);
         const requestedPageSize = toPositiveInt(searchParams.get('pageSize'), DEFAULT_PAGE_SIZE);
@@ -35,6 +41,16 @@ export async function GET(request: Request): Promise<NextResponse> {
 
         return NextResponse.json(result, { status: 200 });
     } catch (error) {
+        if (isCpfProtectionConfigurationError(error)) {
+            return NextResponse.json(
+                {
+                    errorCode: 'SECURITY_KEYS_MISSING',
+                    error: 'CPF encryption keys are missing or invalid. Set CPF_ENCRYPTION_KEY and CPF_HASH_KEY.',
+                },
+                { status: 500 },
+            );
+        }
+
         const message = error instanceof Error ? error.message : 'Unknown error.';
         return NextResponse.json({ error: `Failed to fetch history: ${message}` }, { status: 500 });
     }
