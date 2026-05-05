@@ -13,6 +13,22 @@ const CPF_ENCRYPTION_ALGORITHM = 'aes-256-gcm';
 const CPF_ENCRYPTION_KEY_BYTES = 32;
 const CPF_ENCRYPTION_IV_BYTES = 12;
 
+export const CPF_PROTECTION_CONFIGURATION_ERROR_CODE = 'CPF_PROTECTION_CONFIGURATION_ERROR';
+
+export class CpfProtectionConfigurationError extends Error {
+    readonly code = CPF_PROTECTION_CONFIGURATION_ERROR_CODE;
+
+    constructor(message: string) {
+        super(message);
+        this.name = 'CpfProtectionConfigurationError';
+        Object.setPrototypeOf(this, CpfProtectionConfigurationError.prototype);
+    }
+}
+
+export function isCpfProtectionConfigurationError(error: unknown): error is CpfProtectionConfigurationError {
+    return error instanceof CpfProtectionConfigurationError;
+}
+
 function ensureServerSide(): void {
     if (typeof window !== 'undefined') {
         throw new Error('CPF protection utilities are only available on the server side.');
@@ -23,7 +39,7 @@ function getRequiredEnvironmentVariable(name: string): string {
     const value = process.env[name]?.trim();
 
     if (!value) {
-        throw new Error(`Missing required environment variable: ${name}`);
+        throw new CpfProtectionConfigurationError(`Missing required environment variable: ${name}`);
     }
 
     return value;
@@ -41,7 +57,9 @@ function decodeKey(value: string, expectedBytes: number): Buffer {
         return decoded;
     }
 
-    throw new Error(`Invalid key length. Expected ${expectedBytes} bytes encoded as hex or base64.`);
+    throw new CpfProtectionConfigurationError(
+        `Invalid key length. Expected ${expectedBytes} bytes encoded as hex or base64.`,
+    );
 }
 
 function getEncryptionKey(): Buffer {
@@ -68,6 +86,12 @@ function getHashKey(): Buffer {
     }
 
     return Buffer.from(value, 'utf8');
+}
+
+export function assertCpfProtectionRuntimeConfiguration(): void {
+    // Explicitly validate both keys so callers can fail fast with a clear API error.
+    void getEncryptionKey();
+    void getHashKey();
 }
 
 export function normalizeCpf(value: unknown): string {

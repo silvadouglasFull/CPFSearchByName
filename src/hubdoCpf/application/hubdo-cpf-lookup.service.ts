@@ -15,13 +15,17 @@ import {
     PaginatedHubdoCpfLookupHistory,
 } from '@/hubdoCpf/domain/types';
 import { HubdoHttpClient } from '@/hubdoCpf/infrastructure/http-hubdo-client';
-import { formatCpf, normalizeCpf } from '@/security/cpf-protection';
+import {
+    formatCpf,
+    isCpfProtectionConfigurationError,
+    normalizeCpf,
+} from '@/security/cpf-protection';
 
 export class HubdoCpfLookupService {
     constructor(
         private httpClient: HubdoHttpClient,
         private repository: HubdoCpfLookupRepository,
-    ) {}
+    ) { }
 
     async lookup(request: HubdoCpfLookupRequest): Promise<HubdoCpfLookupResponse> {
         const normalizedCpf = normalizeCpf(request.cpf);
@@ -45,14 +49,19 @@ export class HubdoCpfLookupService {
 
             return this.mapSuccessResponse(persistedRecord);
         } catch (error) {
+            if (isCpfProtectionConfigurationError(error)) {
+                return {
+                    status: 'error',
+                    cpf: '',
+                    errorCode: 'SECURITY_KEYS_MISSING',
+                    message: 'CPF encryption keys are missing or invalid. Set CPF_ENCRYPTION_KEY and CPF_HASH_KEY.',
+                    creditosConsumidos: 0,
+                };
+            }
+
             if (error instanceof HubdoCpfError) {
                 // Persist error attempt
-                await this.persistErrorResponse(
-                    normalizedCpf,
-                    request.birthDate,
-                    turbo,
-                    error,
-                );
+                await this.tryPersistErrorResponse(normalizedCpf, request.birthDate, turbo, error);
 
                 return this.mapErrorResponse(error);
             }
@@ -63,12 +72,7 @@ export class HubdoCpfLookupService {
                 error instanceof Error ? error.message : 'Unknown error',
             );
 
-            await this.persistErrorResponse(
-                normalizedCpf,
-                request.birthDate,
-                turbo,
-                unexpectedError,
-            );
+            await this.tryPersistErrorResponse(normalizedCpf, request.birthDate, turbo, unexpectedError);
 
             return this.mapErrorResponse(unexpectedError);
         }
@@ -131,6 +135,22 @@ export class HubdoCpfLookupService {
         };
 
         return this.repository.save(input);
+    }
+
+    private async tryPersistErrorResponse(
+        cpf: string,
+        birthDate: string | undefined,
+        turbo: boolean,
+        error: HubdoCpfError,
+    ): Promise<void> {
+        try {
+            await this.persistErrorResponse(cpf, birthDate, turbo, error);
+        } catch (persistError) {
+            if (!isCpfProtectionConfigurationError(persistError)) {
+                throw persistError;
+            }
+            // Skip persistence when encryption/hash keys are not configured.
+        }
     }
 
     private mapSuccessResponse(record: HubdoCpfLookupRecord): HubdoCpfLookupResponse {
