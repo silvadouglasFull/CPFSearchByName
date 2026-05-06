@@ -116,6 +116,8 @@ export const hubdoBulkLookupJobs = pgTable(
     {
         id: uuid('id').defaultRandom().primaryKey(),
         mode: text('mode').notNull(), // 'normal' | 'turbo'
+        targetName: text('target_name').notNull(),
+        targetNameNormalized: text('target_name_normalized').notNull(),
         status: text('status').notNull(), // 'queued' | 'processing' | 'completed' | 'failed'
         totalItems: integer('total_items').notNull(),
         queuedItems: integer('queued_items').notNull().default(0),
@@ -130,6 +132,7 @@ export const hubdoBulkLookupJobs = pgTable(
     },
     (table) => ({
         statusIdx: index('hubdo_bulk_lookup_jobs_status_idx').on(table.status),
+        targetNameNormalizedIdx: index('hubdo_bulk_lookup_jobs_target_name_normalized_idx').on(table.targetNameNormalized),
     }),
 );
 
@@ -157,5 +160,55 @@ export const hubdoBulkLookupJobItems = pgTable(
         statusIdx: index('hubdo_bulk_lookup_job_items_status_idx').on(table.status),
         jobCpfUniqueIdx: uniqueIndex('hubdo_bulk_lookup_job_items_job_id_cpf_uidx').on(table.jobId, table.cpf),
         hubdoLookupIdIdx: index('hubdo_bulk_lookup_job_items_hubdo_lookup_id_idx').on(table.hubdoLookupId),
+    }),
+);
+
+export const hubdoBulkLookupNameMatches = pgTable(
+    'hubdo_bulk_lookup_name_matches',
+    {
+        id: uuid('id').defaultRandom().primaryKey(),
+        jobId: uuid('job_id')
+            .notNull()
+            .references(() => hubdoBulkLookupJobs.id, { onDelete: 'cascade' }),
+        cpf: text('cpf').notNull(),
+        targetName: text('target_name').notNull(),
+        targetNameNormalized: text('target_name_normalized').notNull(),
+        foundName: text('found_name').notNull(),
+        foundNameNormalized: text('found_name_normalized').notNull(),
+        foundBirthDate: text('found_birth_date'),
+        createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+        updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+    },
+    (table) => ({
+        jobIdIdx: index('hubdo_bulk_lookup_name_matches_job_id_idx').on(table.jobId),
+        targetNameNormalizedCpfUid: uniqueIndex('hubdo_bulk_lookup_name_matches_target_name_normalized_cpf_uidx').on(
+            table.targetNameNormalized,
+            table.cpf,
+        ),
+    }),
+);
+
+export const hubdoBulkLookupNameExclusions = pgTable(
+    'hubdo_bulk_lookup_name_exclusions',
+    {
+        id: uuid('id').defaultRandom().primaryKey(),
+        jobId: uuid('job_id')
+            .notNull()
+            .references(() => hubdoBulkLookupJobs.id, { onDelete: 'cascade' }),
+        cpf: text('cpf').notNull(),
+        targetName: text('target_name').notNull(),
+        targetNameNormalized: text('target_name_normalized').notNull(),
+        lastFoundName: text('last_found_name').notNull(),
+        lastFoundNameNormalized: text('last_found_name_normalized').notNull(),
+        lastFoundBirthDate: text('last_found_birth_date'),
+        createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+        updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+    },
+    (table) => ({
+        jobIdIdx: index('hubdo_bulk_lookup_name_exclusions_job_id_idx').on(table.jobId),
+        targetNameNormalizedCpfUid: uniqueIndex('hubdo_bulk_lookup_name_exclusions_target_name_normalized_cpf_uidx').on(
+            table.targetNameNormalized,
+            table.cpf,
+        ),
     }),
 );

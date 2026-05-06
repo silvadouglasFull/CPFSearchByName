@@ -66,10 +66,9 @@ export function useHuddoBulkSocket(jobId: string | null, callbacks: UseHuddoBulk
 
         // Initialize socket connection
         if (!socketRef.current) {
-            const protocol = window.location.protocol === 'https:' ? 'https' : 'http';
-            const host = window.location.host;
-
-            socketRef.current = io(`${protocol}//${host}/hubdo-bulk`, {
+            socketRef.current = io('/hubdo-bulk', {
+                path: '/socket.io',
+                transports: ['websocket'],
                 reconnection: true,
                 reconnectionDelay: 1000,
                 reconnectionDelayMax: 5000,

@@ -1,5 +1,10 @@
 import { db } from '@/database/db';
-import { hubdoBulkLookupJobItems, hubdoBulkLookupJobs } from '@/database/schema';
+import {
+    hubdoBulkLookupJobItems,
+    hubdoBulkLookupJobs,
+    hubdoBulkLookupNameExclusions,
+    hubdoBulkLookupNameMatches,
+} from '@/database/schema';
 import {
     HubdoBulkLookupCreateJobInput,
     HubdoBulkLookupCreateJobResult,
@@ -7,6 +12,8 @@ import {
     HubdoBulkLookupJob,
     HubdoBulkLookupJobItem,
     HubdoBulkLookupJobStatusView,
+    HubdoBulkLookupNameExclusionInput,
+    HubdoBulkLookupNameMatchInput,
     HubdoBulkLookupRepository,
 } from '@/hubdoCpf/domain/bulk-lookup-types';
 import { and, desc, eq, sql } from 'drizzle-orm';
@@ -18,6 +25,8 @@ export class DrizzleHubdoBulkLookupRepository implements HubdoBulkLookupReposito
                 .insert(hubdoBulkLookupJobs)
                 .values({
                     mode: input.mode,
+                    targetName: input.targetName,
+                    targetNameNormalized: input.targetNameNormalized,
                     status: 'queued',
                     totalItems: input.cpfs.length,
                     queuedItems: input.cpfs.length,
@@ -64,6 +73,16 @@ export class DrizzleHubdoBulkLookupRepository implements HubdoBulkLookupReposito
                 },
             };
         });
+    }
+
+    async getJobById(jobId: string): Promise<HubdoBulkLookupJob | null> {
+        const rows = await db
+            .select()
+            .from(hubdoBulkLookupJobs)
+            .where(eq(hubdoBulkLookupJobs.id, jobId))
+            .limit(1);
+
+        return rows[0] ? this.mapJob(rows[0]) : null;
     }
 
     async getStatus(params: HubdoBulkLookupGetStatusParams): Promise<HubdoBulkLookupJobStatusView | null> {
@@ -119,6 +138,65 @@ export class DrizzleHubdoBulkLookupRepository implements HubdoBulkLookupReposito
             totalItems,
             totalPages,
         };
+    }
+
+    async getExcludedCpfsForTargetName(targetNameNormalized: string): Promise<string[]> {
+        const rows = await db
+            .select({ cpf: hubdoBulkLookupNameExclusions.cpf })
+            .from(hubdoBulkLookupNameExclusions)
+            .where(eq(hubdoBulkLookupNameExclusions.targetNameNormalized, targetNameNormalized));
+
+        return rows.map((row) => row.cpf);
+    }
+
+    async recordNameMatch(input: HubdoBulkLookupNameMatchInput): Promise<void> {
+        await db
+            .insert(hubdoBulkLookupNameMatches)
+            .values({
+                jobId: input.jobId,
+                cpf: input.cpf,
+                targetName: input.targetName,
+                targetNameNormalized: input.targetNameNormalized,
+                foundName: input.foundName,
+                foundNameNormalized: input.foundNameNormalized,
+                foundBirthDate: input.foundBirthDate ?? null,
+            })
+            .onConflictDoUpdate({
+                target: [hubdoBulkLookupNameMatches.targetNameNormalized, hubdoBulkLookupNameMatches.cpf],
+                set: {
+                    jobId: input.jobId,
+                    targetName: input.targetName,
+                    foundName: input.foundName,
+                    foundNameNormalized: input.foundNameNormalized,
+                    foundBirthDate: input.foundBirthDate ?? null,
+                    updatedAt: new Date(),
+                },
+            });
+    }
+
+    async recordNameExclusion(input: HubdoBulkLookupNameExclusionInput): Promise<void> {
+        await db
+            .insert(hubdoBulkLookupNameExclusions)
+            .values({
+                jobId: input.jobId,
+                cpf: input.cpf,
+                targetName: input.targetName,
+                targetNameNormalized: input.targetNameNormalized,
+                lastFoundName: input.lastFoundName,
+                lastFoundNameNormalized: input.lastFoundNameNormalized,
+                lastFoundBirthDate: input.lastFoundBirthDate ?? null,
+            })
+            .onConflictDoUpdate({
+                target: [hubdoBulkLookupNameExclusions.targetNameNormalized, hubdoBulkLookupNameExclusions.cpf],
+                set: {
+                    jobId: input.jobId,
+                    targetName: input.targetName,
+                    lastFoundName: input.lastFoundName,
+                    lastFoundNameNormalized: input.lastFoundNameNormalized,
+                    lastFoundBirthDate: input.lastFoundBirthDate ?? null,
+                    updatedAt: new Date(),
+                },
+            });
     }
 
     async markItemProcessing(itemId: string, attemptCount: number): Promise<void> {
@@ -314,6 +392,8 @@ export class DrizzleHubdoBulkLookupRepository implements HubdoBulkLookupReposito
         return {
             id: row.id,
             mode: row.mode as 'normal' | 'turbo',
+            targetName: row.targetName,
+            targetNameNormalized: row.targetNameNormalized,
             status: row.status as 'queued' | 'processing' | 'completed' | 'failed',
             totalItems: row.totalItems,
             queuedItems: row.queuedItems,

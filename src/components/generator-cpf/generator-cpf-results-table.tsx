@@ -15,6 +15,8 @@ interface GeneratorCpfResultsTableProps {
     selectionEnabled?: boolean;
     selectedCpfs?: string[];
     onToggleSelectionMode?: () => void;
+    onToggleSelectAll?: () => void;
+    onSelectNextTen?: () => void;
     onToggleCpfSelection?: (cpf: string) => void;
     onEnqueueSelectedCpfs?: () => void;
     isEnqueueingSelectedCpfs?: boolean;
@@ -28,6 +30,8 @@ export function GeneratorCpfResultsTable({
     selectionEnabled = false,
     selectedCpfs = [],
     onToggleSelectionMode,
+    onToggleSelectAll,
+    onSelectNextTen,
     onToggleCpfSelection,
     onEnqueueSelectedCpfs,
     isEnqueueingSelectedCpfs = false,
@@ -35,6 +39,8 @@ export function GeneratorCpfResultsTable({
     enqueueButtonLabel = 'Queue selected CPFs',
     showHubdoLookupStatus = false,
 }: GeneratorCpfResultsTableProps) {
+    const allSelected = records.length > 0 && selectedCount === records.length;
+
     return (
         <div className="rounded-3xl border bg-card p-2 shadow-sm md:p-4">
             <div className="mb-4 flex items-center justify-between px-2">
@@ -49,6 +55,28 @@ export function GeneratorCpfResultsTable({
                             variant="outline"
                         >
                             {selectionEnabled ? 'Disable selection' : 'Enable selection'}
+                        </Button>
+                    ) : null}
+                    {selectionEnabled && onToggleSelectAll ? (
+                        <Button
+                            className="rounded-2xl"
+                            onClick={onToggleSelectAll}
+                            size="sm"
+                            type="button"
+                            variant="outline"
+                        >
+                            {allSelected ? 'Unselect all' : 'Select all'}
+                        </Button>
+                    ) : null}
+                    {selectionEnabled && onSelectNextTen ? (
+                        <Button
+                            className="rounded-2xl"
+                            onClick={onSelectNextTen}
+                            size="sm"
+                            type="button"
+                            variant="outline"
+                        >
+                            Select next 10
                         </Button>
                     ) : null}
                     {onEnqueueSelectedCpfs ? (

@@ -5,6 +5,7 @@ import {
     HubdoBulkLookupQueueMessage,
     HubdoBulkLookupRepository,
 } from '@/hubdoCpf/domain/bulk-lookup-types';
+import { normalizePersonName } from '@/hubdoCpf/domain/name-normalization';
 import { createRabbitMqChannel } from '@/queue/rabbitmq/connection';
 import {
     getBulkMaxRetries,
@@ -37,6 +38,55 @@ export async function startHubdoBulkConsumer(deps: {
 }): Promise<void> {
     const channel = await createRabbitMqChannel();
     await channel.prefetch(getRabbitMqPrefetch());
+    const jobTargetNameCache = new Map<string, { targetName: string; targetNameNormalized: string }>();
+
+    async function emitJobProgress(jobId: string): Promise<void> {
+        const jobStatus = await deps.bulkRepository.getStatus({ jobId });
+        if (!jobStatus) {
+            return;
+        }
+
+        emitHubdoBulkJobUpdated({
+            jobId,
+            status: jobStatus.job.status as 'queued' | 'processing' | 'completed' | 'failed',
+            summary: jobStatus.summary,
+            updatedAt: new Date().toISOString(),
+        });
+
+        if (jobStatus.job.status === 'completed') {
+            emitHubdoBulkJobTerminal({
+                jobId,
+                status: 'completed',
+                finalSummary: {
+                    total: jobStatus.summary.total,
+                    success: jobStatus.summary.success,
+                    error: jobStatus.summary.error,
+                    deadLetter: jobStatus.summary.deadLetter,
+                },
+                finishedAt: jobStatus.job.finishedAt?.toISOString() ?? new Date().toISOString(),
+            });
+        }
+    }
+
+    async function getJobTargetName(jobId: string): Promise<{ targetName: string; targetNameNormalized: string } | null> {
+        const cached = jobTargetNameCache.get(jobId);
+        if (cached) {
+            return cached;
+        }
+
+        const job = await deps.bulkRepository.getJobById(jobId);
+        if (!job) {
+            return null;
+        }
+
+        const resolved = {
+            targetName: job.targetName,
+            targetNameNormalized: job.targetNameNormalized,
+        };
+
+        jobTargetNameCache.set(jobId, resolved);
+        return resolved;
+    }
 
     await channel.consume(HUBDO_BULK_LOOKUP_QUEUE, async (rawMessage) => {
         if (!rawMessage) {
@@ -91,6 +141,41 @@ export async function startHubdoBulkConsumer(deps: {
                     hubdoLookupId: latestLookupId,
                 });
 
+                const lookupName = lookupResult.nome?.trim();
+                if (lookupName) {
+                    try {
+                        const jobTarget = await getJobTargetName(parsed.jobId);
+                        if (jobTarget) {
+                            const foundNameNormalized = normalizePersonName(lookupName);
+                            const isMatch = foundNameNormalized === jobTarget.targetNameNormalized;
+
+                            if (isMatch) {
+                                await deps.bulkRepository.recordNameMatch({
+                                    jobId: parsed.jobId,
+                                    cpf: parsed.cpf,
+                                    targetName: jobTarget.targetName,
+                                    targetNameNormalized: jobTarget.targetNameNormalized,
+                                    foundName: lookupName,
+                                    foundNameNormalized,
+                                    foundBirthDate: lookupResult.dataNascimento ?? null,
+                                });
+                            } else {
+                                await deps.bulkRepository.recordNameExclusion({
+                                    jobId: parsed.jobId,
+                                    cpf: parsed.cpf,
+                                    targetName: jobTarget.targetName,
+                                    targetNameNormalized: jobTarget.targetNameNormalized,
+                                    lastFoundName: lookupName,
+                                    lastFoundNameNormalized: foundNameNormalized,
+                                    lastFoundBirthDate: lookupResult.dataNascimento ?? null,
+                                });
+                            }
+                        }
+                    } catch (persistError) {
+                        console.error('[HubDo Bulk Consumer] Failed to persist name classification:', persistError);
+                    }
+                }
+
                 // Emit item success event
                 emitHubdoBulkItemUpdated({
                     jobId: parsed.jobId,
@@ -105,31 +190,7 @@ export async function startHubdoBulkConsumer(deps: {
                     origin: lookupResult.origem,
                 });
 
-                // Fetch job status and emit update
-                const jobStatus = await deps.bulkRepository.getStatus({ jobId: parsed.jobId });
-                if (jobStatus) {
-                    emitHubdoBulkJobUpdated({
-                        jobId: parsed.jobId,
-                        status: jobStatus.job.status as 'queued' | 'processing' | 'completed' | 'failed',
-                        summary: jobStatus.summary,
-                        updatedAt: new Date().toISOString(),
-                    });
-
-                    // If job is complete, emit terminal event
-                    if (jobStatus.job.status === 'completed') {
-                        emitHubdoBulkJobTerminal({
-                            jobId: parsed.jobId,
-                            status: 'completed',
-                            finalSummary: {
-                                total: jobStatus.summary.total,
-                                success: jobStatus.summary.success,
-                                error: jobStatus.summary.error,
-                                deadLetter: jobStatus.summary.deadLetter,
-                            },
-                            finishedAt: jobStatus.job.finishedAt?.toISOString() ?? new Date().toISOString(),
-                        });
-                    }
-                }
+                await emitJobProgress(parsed.jobId);
 
                 if (latestLookupId) {
                     await deps.generatorHistoryService.linkLookupForCpfRecords(parsed.cpf, latestLookupId);
@@ -198,31 +259,7 @@ export async function startHubdoBulkConsumer(deps: {
                     origin: null,
                 });
 
-                // Fetch job status and emit update
-                const jobStatus = await deps.bulkRepository.getStatus({ jobId: parsed.jobId });
-                if (jobStatus) {
-                    emitHubdoBulkJobUpdated({
-                        jobId: parsed.jobId,
-                        status: jobStatus.job.status as 'queued' | 'processing' | 'completed' | 'failed',
-                        summary: jobStatus.summary,
-                        updatedAt: new Date().toISOString(),
-                    });
-
-                    // If job is complete, emit terminal event
-                    if (jobStatus.job.status === 'completed') {
-                        emitHubdoBulkJobTerminal({
-                            jobId: parsed.jobId,
-                            status: 'completed',
-                            finalSummary: {
-                                total: jobStatus.summary.total,
-                                success: jobStatus.summary.success,
-                                error: jobStatus.summary.error,
-                                deadLetter: jobStatus.summary.deadLetter,
-                            },
-                            finishedAt: jobStatus.job.finishedAt?.toISOString() ?? new Date().toISOString(),
-                        });
-                    }
-                }
+                await emitJobProgress(parsed.jobId);
 
                 await publishHubdoBulkLookupDeadLetter(parsed);
                 channel.ack(rawMessage);
@@ -251,31 +288,7 @@ export async function startHubdoBulkConsumer(deps: {
                 origin: null,
             });
 
-            // Fetch job status and emit update
-            const jobStatus = await deps.bulkRepository.getStatus({ jobId: parsed.jobId });
-            if (jobStatus) {
-                emitHubdoBulkJobUpdated({
-                    jobId: parsed.jobId,
-                    status: jobStatus.job.status as 'queued' | 'processing' | 'completed' | 'failed',
-                    summary: jobStatus.summary,
-                    updatedAt: new Date().toISOString(),
-                });
-
-                // If job is complete, emit terminal event
-                if (jobStatus.job.status === 'completed') {
-                    emitHubdoBulkJobTerminal({
-                        jobId: parsed.jobId,
-                        status: 'completed',
-                        finalSummary: {
-                            total: jobStatus.summary.total,
-                            success: jobStatus.summary.success,
-                            error: jobStatus.summary.error,
-                            deadLetter: jobStatus.summary.deadLetter,
-                        },
-                        finishedAt: jobStatus.job.finishedAt?.toISOString() ?? new Date().toISOString(),
-                    });
-                }
-            }
+            await emitJobProgress(parsed.jobId);
 
             channel.ack(rawMessage);
         } catch {

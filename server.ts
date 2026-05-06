@@ -3,6 +3,7 @@
  * Run this with: npm run start:with-socket or configure in your deployment
  */
 
+import { startHubdoBulkLookupWorker } from '@/hubdoCpf/application/hubdo-bulk-lookup-worker.service';
 import { initializeSocketIOServer } from '@/realtime/socket-server';
 import { createServer } from 'http';
 import next from 'next';
@@ -11,11 +12,12 @@ import { parse } from 'url';
 const dev = process.env.NODE_ENV !== 'production';
 const hostname = 'localhost';
 const port = parseInt(process.env.PORT || '3000', 10);
+const shouldStartBulkWorker = process.env.START_HUBDO_BULK_WORKER === 'true';
 
 const app = next({ dev });
 const handle = app.getRequestHandler();
 
-app.prepare().then(() => {
+app.prepare().then(async () => {
     const httpServer = createServer(async (req, res) => {
         try {
             const parsedUrl = parse(req.url!, true);
@@ -29,6 +31,11 @@ app.prepare().then(() => {
 
     // Initialize Socket.io server
     initializeSocketIOServer(httpServer);
+
+    if (shouldStartBulkWorker) {
+        await startHubdoBulkLookupWorker();
+        console.log('> HubDo bulk lookup worker initialized in server process');
+    }
 
     httpServer
         .once('error', (err) => {

@@ -14,6 +14,7 @@ const MAX_CPFS_PER_REQUEST = 100;
 type BulkLookupBody = {
     cpfs?: string[];
     mode?: 'normal' | 'turbo';
+    targetName?: string;
 };
 
 export async function POST(request: Request): Promise<NextResponse> {
@@ -22,6 +23,14 @@ export async function POST(request: Request): Promise<NextResponse> {
 
         const payload = (await request.json()) as BulkLookupBody;
         const mode = payload.mode ?? 'normal';
+        const targetName = payload.targetName?.trim() ?? '';
+
+        if (!targetName) {
+            return NextResponse.json(
+                { error: 'Target name is required.' },
+                { status: 400 },
+            );
+        }
 
         if (mode !== 'normal' && mode !== 'turbo') {
             return NextResponse.json(
@@ -59,6 +68,7 @@ export async function POST(request: Request): Promise<NextResponse> {
         const created = await service.enqueueBulkJob({
             cpfs: normalizedCpfs,
             mode,
+            targetName,
         });
 
         return NextResponse.json(

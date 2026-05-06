@@ -23,6 +23,13 @@ import {
     CardHeader,
     CardTitle,
 } from '@/components/ui/card';
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogHeader,
+    DialogTitle,
+} from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import identifyByState from '@/identifyByState.json';
 import { Save, Search, WandSparkles } from 'lucide-react';
@@ -78,6 +85,9 @@ export function GeneratorCpfClient() {
     const [isHistoryBulkLookupLoading, setIsHistoryBulkLookupLoading] = useState(false);
     const [historyBulkLookupResult, setHistoryBulkLookupResult] = useState<BulkHubdoLookupResponse | null>(null);
     const [historyBulkLookupErrorMessage, setHistoryBulkLookupErrorMessage] = useState<string | null>(null);
+    const [isBulkConfirmOpen, setIsBulkConfirmOpen] = useState(false);
+    const [bulkConfirmSource, setBulkConfirmSource] = useState<'search' | 'history' | null>(null);
+    const [bulkConfirmTargetName, setBulkConfirmTargetName] = useState('');
 
     // Realtime job tracking
     const [currentJobId, setCurrentJobId] = useState<string | null>(null);
@@ -353,6 +363,29 @@ export function GeneratorCpfClient() {
         );
     }
 
+    function toggleAllCpfs(recordsToToggle: GeneratedCpfRecord[]): void {
+        const allCpfs = recordsToToggle.map((record) => record.cpf);
+
+        setSelectedCpfs((current) =>
+            current.length === allCpfs.length && allCpfs.every((cpf) => current.includes(cpf))
+                ? []
+                : allCpfs,
+        );
+    }
+
+    function selectNextTenCpfs(recordsToSelect: GeneratedCpfRecord[]): void {
+        const nextBatch = recordsToSelect
+            .map((record) => record.cpf)
+            .filter((cpf) => !selectedCpfs.includes(cpf))
+            .slice(0, 10);
+
+        if (nextBatch.length === 0) {
+            return;
+        }
+
+        setSelectedCpfs((current) => Array.from(new Set([...current, ...nextBatch])));
+    }
+
     function toggleHistorySelectionMode(): void {
         setHistorySelectionEnabled((current) => {
             if (current) {
@@ -373,7 +406,45 @@ export function GeneratorCpfClient() {
         );
     }
 
-    async function handleBulkLookup(): Promise<void> {
+    function toggleAllHistoryCpfs(recordsToToggle: GeneratedCpfRecord[]): void {
+        const allCpfs = recordsToToggle.map((record) => record.cpf);
+
+        setSelectedHistoryCpfs((current) =>
+            current.length === allCpfs.length && allCpfs.every((cpf) => current.includes(cpf))
+                ? []
+                : allCpfs,
+        );
+    }
+
+    function selectNextTenHistoryCpfs(recordsToSelect: GeneratedCpfRecord[]): void {
+        const nextBatch = recordsToSelect
+            .map((record) => record.cpf)
+            .filter((cpf) => !selectedHistoryCpfs.includes(cpf))
+            .slice(0, 10);
+
+        if (nextBatch.length === 0) {
+            return;
+        }
+
+        setSelectedHistoryCpfs((current) => Array.from(new Set([...current, ...nextBatch])));
+    }
+
+    function openBulkConfirm(source: 'search' | 'history'): void {
+        setBulkConfirmSource(source);
+        setBulkConfirmTargetName('');
+        setIsBulkConfirmOpen(true);
+    }
+
+    function closeBulkConfirm(): void {
+        if (isBulkLookupLoading || isHistoryBulkLookupLoading) {
+            return;
+        }
+
+        setIsBulkConfirmOpen(false);
+        setBulkConfirmSource(null);
+    }
+
+    async function handleBulkLookup(targetName: string): Promise<void> {
         if (!canBulkLookup || isBulkLookupLoading) {
             return;
         }
@@ -390,7 +461,7 @@ export function GeneratorCpfClient() {
                     'Content-Type': 'application/json',
                     Accept: 'application/json',
                 },
-                body: JSON.stringify({ cpfs: selectedCpfs, mode: bulkLookupMode }),
+                body: JSON.stringify({ cpfs: selectedCpfs, mode: bulkLookupMode, targetName }),
             });
 
             const payload = (await response.json()) as BulkHubdoLookupJobAcceptedResponse | GeneratorCpfApiError;
@@ -435,7 +506,7 @@ export function GeneratorCpfClient() {
         }
     }
 
-    async function handleHistoryBulkLookup(): Promise<void> {
+    async function handleHistoryBulkLookup(targetName: string): Promise<void> {
         if (!canHistoryBulkLookup || isHistoryBulkLookupLoading) {
             return;
         }
@@ -453,7 +524,7 @@ export function GeneratorCpfClient() {
                     'Content-Type': 'application/json',
                     Accept: 'application/json',
                 },
-                body: JSON.stringify({ cpfs: deduplicatedCpfs, mode: historyBulkLookupMode }),
+                body: JSON.stringify({ cpfs: deduplicatedCpfs, mode: historyBulkLookupMode, targetName }),
             });
 
             const payload = (await response.json()) as BulkHubdoLookupJobAcceptedResponse | GeneratorCpfApiError;
@@ -484,6 +555,26 @@ export function GeneratorCpfClient() {
         }
     }
 
+    async function confirmBulkLookup(): Promise<void> {
+        const targetName = bulkConfirmTargetName.trim();
+        if (!targetName) {
+            return;
+        }
+
+        if (bulkConfirmSource === 'search') {
+            await handleBulkLookup(targetName);
+        }
+
+        if (bulkConfirmSource === 'history') {
+            await handleHistoryBulkLookup(targetName);
+        }
+
+        if (!isBulkLookupLoading && !isHistoryBulkLookupLoading) {
+            setIsBulkConfirmOpen(false);
+            setBulkConfirmSource(null);
+        }
+    }
+
     return (
         <>
             <GeneratorCpfSearchModal
@@ -491,6 +582,53 @@ export function GeneratorCpfClient() {
                 onClose={() => setIsSearchModalOpen(false)}
                 onSelectCpf={handleSelectCpfFromModal}
             />
+            <Dialog onOpenChange={(open) => {
+                if (!open) {
+                    closeBulkConfirm();
+                }
+            }} open={isBulkConfirmOpen}>
+                <DialogContent className="max-w-lg">
+                    <DialogHeader>
+                        <DialogTitle>Confirm bulk queue</DialogTitle>
+                        <DialogDescription>
+                            Confirm queueing of selected CPFs and provide the target person name.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <div className="space-y-4">
+                        <div className="space-y-1">
+                            <p className="text-sm font-medium">Target person name</p>
+                            <Input
+                                className="h-11 rounded-2xl"
+                                disabled={isBulkLookupLoading || isHistoryBulkLookupLoading}
+                                onChange={(event) => setBulkConfirmTargetName(event.target.value)}
+                                placeholder="Ex.: Vanessa Silva dos Reis"
+                                value={bulkConfirmTargetName}
+                            />
+                        </div>
+                        <div className="flex items-center justify-end gap-2">
+                            <Button
+                                className="rounded-2xl"
+                                disabled={isBulkLookupLoading || isHistoryBulkLookupLoading}
+                                onClick={closeBulkConfirm}
+                                type="button"
+                                variant="outline"
+                            >
+                                Cancel
+                            </Button>
+                            <Button
+                                className="rounded-2xl"
+                                disabled={!bulkConfirmTargetName.trim() || isBulkLookupLoading || isHistoryBulkLookupLoading}
+                                onClick={() => {
+                                    void confirmBulkLookup();
+                                }}
+                                type="button"
+                            >
+                                Confirm and queue
+                            </Button>
+                        </div>
+                    </div>
+                </DialogContent>
+            </Dialog>
             <section className="space-y-6">
                 <div className="flex gap-2">
                     <Button
@@ -602,7 +740,13 @@ export function GeneratorCpfClient() {
                                     enqueueButtonLabel="Queue selected CPFs"
                                     isEnqueueingSelectedCpfs={isBulkLookupLoading}
                                     onEnqueueSelectedCpfs={selectionEnabled ? () => {
-                                        void handleBulkLookup();
+                                        openBulkConfirm('search');
+                                    } : undefined}
+                                    onSelectNextTen={selectionEnabled ? () => {
+                                        selectNextTenCpfs(records);
+                                    } : undefined}
+                                    onToggleSelectAll={selectionEnabled ? () => {
+                                        toggleAllCpfs(records);
                                     } : undefined}
                                     onToggleCpfSelection={toggleCpfSelection}
                                     onToggleSelectionMode={toggleSelectionMode}
@@ -737,7 +881,13 @@ export function GeneratorCpfClient() {
                                                     enqueueButtonLabel="Queue selected CPFs"
                                                     isEnqueueingSelectedCpfs={isHistoryBulkLookupLoading}
                                                     onEnqueueSelectedCpfs={historySelectionEnabled ? () => {
-                                                        void handleHistoryBulkLookup();
+                                                        openBulkConfirm('history');
+                                                    } : undefined}
+                                                    onSelectNextTen={historySelectionEnabled ? () => {
+                                                        selectNextTenHistoryCpfs(selectedHistoryItem.resultRecords);
+                                                    } : undefined}
+                                                    onToggleSelectAll={historySelectionEnabled ? () => {
+                                                        toggleAllHistoryCpfs(selectedHistoryItem.resultRecords);
                                                     } : undefined}
                                                     onToggleCpfSelection={toggleHistoryCpfSelection}
                                                     onToggleSelectionMode={toggleHistorySelectionMode}

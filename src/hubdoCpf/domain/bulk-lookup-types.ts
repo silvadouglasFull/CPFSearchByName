@@ -15,6 +15,8 @@ export interface HubdoBulkLookupQueueMessage {
 export interface HubdoBulkLookupJob {
     id: string;
     mode: HubdoBulkLookupMode;
+    targetName: string;
+    targetNameNormalized: string;
     status: HubdoBulkLookupJobStatus;
     totalItems: number;
     queuedItems: number;
@@ -47,7 +49,29 @@ export interface HubdoBulkLookupJobItem {
 export interface HubdoBulkLookupCreateJobInput {
     cpfs: string[];
     mode: HubdoBulkLookupMode;
+    targetName: string;
+    targetNameNormalized: string;
     requestedBy?: string;
+}
+
+export interface HubdoBulkLookupNameMatchInput {
+    jobId: string;
+    cpf: string;
+    targetName: string;
+    targetNameNormalized: string;
+    foundName: string;
+    foundNameNormalized: string;
+    foundBirthDate?: string | null;
+}
+
+export interface HubdoBulkLookupNameExclusionInput {
+    jobId: string;
+    cpf: string;
+    targetName: string;
+    targetNameNormalized: string;
+    lastFoundName: string;
+    lastFoundNameNormalized: string;
+    lastFoundBirthDate?: string | null;
 }
 
 export interface HubdoBulkLookupJobSummary {
@@ -84,7 +108,11 @@ export interface HubdoBulkLookupJobStatusView {
 
 export interface HubdoBulkLookupRepository {
     createJob(input: HubdoBulkLookupCreateJobInput): Promise<HubdoBulkLookupCreateJobResult>;
+    getJobById(jobId: string): Promise<HubdoBulkLookupJob | null>;
     getStatus(params: HubdoBulkLookupGetStatusParams): Promise<HubdoBulkLookupJobStatusView | null>;
+    getExcludedCpfsForTargetName(targetNameNormalized: string): Promise<string[]>;
+    recordNameMatch(input: HubdoBulkLookupNameMatchInput): Promise<void>;
+    recordNameExclusion(input: HubdoBulkLookupNameExclusionInput): Promise<void>;
     markItemProcessing(itemId: string, attemptCount: number): Promise<void>;
     markItemQueued(itemId: string, attemptCount: number, errorCode?: string, errorMessage?: string): Promise<void>;
     markItemSuccess(input: {
