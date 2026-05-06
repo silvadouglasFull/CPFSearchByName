@@ -60,10 +60,25 @@ export function GeneratorCpfClient() {
     const [bulkLookupResult, setBulkLookupResult] = useState<BulkHubdoLookupResponse | null>(null);
     const [bulkLookupErrorMessage, setBulkLookupErrorMessage] = useState<string | null>(null);
     const [bulkLookupMode, setBulkLookupMode] = useState<'normal' | 'turbo'>('normal');
+    const [historySelectionEnabled, setHistorySelectionEnabled] = useState(false);
+    const [selectedHistoryCpfs, setSelectedHistoryCpfs] = useState<string[]>([]);
+    const [historyBulkLookupMode, setHistoryBulkLookupMode] = useState<'normal' | 'turbo'>('normal');
+    const [isHistoryBulkLookupLoading, setIsHistoryBulkLookupLoading] = useState(false);
+    const [historyBulkLookupResult, setHistoryBulkLookupResult] = useState<BulkHubdoLookupResponse | null>(null);
+    const [historyBulkLookupErrorMessage, setHistoryBulkLookupErrorMessage] = useState<string | null>(null);
 
     const canGenerate = useMemo(() => partialCpf.trim().length > 0, [partialCpf]);
     const canSave = useMemo(() => partialCpf.trim().length > 0 && records.length > 0, [partialCpf, records]);
     const canBulkLookup = useMemo(() => selectedCpfs.length > 0, [selectedCpfs]);
+    const canHistoryBulkLookup = useMemo(() => selectedHistoryCpfs.length > 0, [selectedHistoryCpfs]);
+
+    function resetHistorySelectionState(): void {
+        setHistorySelectionEnabled(false);
+        setSelectedHistoryCpfs([]);
+        setHistoryBulkLookupMode('normal');
+        setHistoryBulkLookupResult(null);
+        setHistoryBulkLookupErrorMessage(null);
+    }
 
     async function handleGenerate(event: FormEvent<HTMLFormElement>): Promise<void> {
         event.preventDefault();
@@ -118,6 +133,7 @@ export function GeneratorCpfClient() {
         setHistoryErrorMessage(null);
         setSelectedHistoryItem(null);
         setSelectedHistoryItemId(null);
+        resetHistorySelectionState();
 
         try {
             const response = await fetch(`/api/generator-cpf-history?page=${page}&pageSize=${HISTORY_PAGE_SIZE}`, {
@@ -144,6 +160,7 @@ export function GeneratorCpfClient() {
         setIsHistoryDetailsLoading(true);
         setSelectedHistoryItemId(itemId);
         setHistoryErrorMessage(null);
+        resetHistorySelectionState();
 
         try {
             const response = await fetch(`/api/generator-cpf-history/${itemId}`, {
@@ -205,6 +222,7 @@ export function GeneratorCpfClient() {
 
     function openSearchTab(): void {
         setActiveTab('search');
+        resetHistorySelectionState();
     }
 
     function openHistoryTab(): void {
@@ -232,6 +250,26 @@ export function GeneratorCpfClient() {
 
     function toggleCpfSelection(cpf: string): void {
         setSelectedCpfs((current) =>
+            current.includes(cpf)
+                ? current.filter((value) => value !== cpf)
+                : [...current, cpf],
+        );
+    }
+
+    function toggleHistorySelectionMode(): void {
+        setHistorySelectionEnabled((current) => {
+            if (current) {
+                setSelectedHistoryCpfs([]);
+                setHistoryBulkLookupResult(null);
+                setHistoryBulkLookupErrorMessage(null);
+            }
+
+            return !current;
+        });
+    }
+
+    function toggleHistoryCpfSelection(cpf: string): void {
+        setSelectedHistoryCpfs((current) =>
             current.includes(cpf)
                 ? current.filter((value) => value !== cpf)
                 : [...current, cpf],
@@ -268,6 +306,40 @@ export function GeneratorCpfClient() {
             setBulkLookupErrorMessage(error instanceof Error ? error.message : 'Unknown error.');
         } finally {
             setIsBulkLookupLoading(false);
+        }
+    }
+
+    async function handleHistoryBulkLookup(): Promise<void> {
+        if (!canHistoryBulkLookup || isHistoryBulkLookupLoading) {
+            return;
+        }
+
+        setIsHistoryBulkLookupLoading(true);
+        setHistoryBulkLookupErrorMessage(null);
+        setHistoryBulkLookupResult(null);
+
+        try {
+            const deduplicatedCpfs = Array.from(new Set(selectedHistoryCpfs));
+            const response = await fetch('/api/hubdo-cpf-lookup/bulk', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    Accept: 'application/json',
+                },
+                body: JSON.stringify({ cpfs: deduplicatedCpfs, mode: historyBulkLookupMode }),
+            });
+
+            const payload = (await response.json()) as BulkHubdoLookupResponse | GeneratorCpfApiError;
+
+            if (!response.ok) {
+                throw new Error((payload as GeneratorCpfApiError).error || 'Bulk HubDo lookup failed.');
+            }
+
+            setHistoryBulkLookupResult(payload as BulkHubdoLookupResponse);
+        } catch (error) {
+            setHistoryBulkLookupErrorMessage(error instanceof Error ? error.message : 'Unknown error.');
+        } finally {
+            setIsHistoryBulkLookupLoading(false);
         }
     }
 
@@ -523,7 +595,63 @@ export function GeneratorCpfClient() {
                                     </Card>
 
                                     {selectedHistoryItem.resultRecords.length > 0 ? (
-                                        <GeneratorCpfResultsTable records={selectedHistoryItem.resultRecords} />
+                                        <>
+                                            <GeneratorCpfResultsTable
+                                                onToggleCpfSelection={toggleHistoryCpfSelection}
+                                                onToggleSelectionMode={toggleHistorySelectionMode}
+                                                records={selectedHistoryItem.resultRecords}
+                                                selectedCpfs={selectedHistoryCpfs}
+                                                selectionEnabled={historySelectionEnabled}
+                                            />
+
+                                            {historySelectionEnabled ? (
+                                                <div className="space-y-2">
+                                                    <div className="flex items-center justify-between">
+                                                        <p className="text-sm text-muted-foreground">
+                                                            {selectedHistoryCpfs.length} CPF(s) selected for HubDo lookup.
+                                                        </p>
+                                                        <div className="flex items-center gap-2">
+                                                            <select
+                                                                aria-label="History bulk HubDo lookup mode"
+                                                                className="h-10 rounded-2xl border bg-background px-3 text-sm"
+                                                                disabled={isHistoryBulkLookupLoading}
+                                                                onChange={(event) => setHistoryBulkLookupMode(event.target.value as 'normal' | 'turbo')}
+                                                                value={historyBulkLookupMode}
+                                                            >
+                                                                <option value="normal">Normal (5 credits)</option>
+                                                                <option value="turbo">Turbo (25 credits)</option>
+                                                            </select>
+                                                            <Button
+                                                                className="rounded-2xl"
+                                                                disabled={!canHistoryBulkLookup || isHistoryBulkLookupLoading}
+                                                                onClick={() => {
+                                                                    void handleHistoryBulkLookup();
+                                                                }}
+                                                                type="button"
+                                                            >
+                                                                {isHistoryBulkLookupLoading ? 'Querying HubDo...' : 'Lookup selected CPFs'}
+                                                            </Button>
+                                                        </div>
+                                                    </div>
+
+                                                    {historyBulkLookupErrorMessage ? (
+                                                        <FriendlyMessage
+                                                            description={historyBulkLookupErrorMessage}
+                                                            title="Bulk lookup failed"
+                                                            variant="error"
+                                                        />
+                                                    ) : null}
+
+                                                    {historyBulkLookupResult ? (
+                                                        <FriendlyMessage
+                                                            description={`${historyBulkLookupResult.summary.success} success, ${historyBulkLookupResult.summary.error} error(s), ${historyBulkLookupResult.summary.total} processed in ${historyBulkLookupMode} mode.`}
+                                                            title="Bulk lookup completed"
+                                                            variant={historyBulkLookupResult.summary.error > 0 ? 'warning' : 'success'}
+                                                        />
+                                                    ) : null}
+                                                </div>
+                                            ) : null}
+                                        </>
                                     ) : (
                                         <FriendlyMessage
                                             description="This snapshot has no persisted CPF records."
