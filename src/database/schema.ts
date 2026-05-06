@@ -55,8 +55,8 @@ export const generatorCpfHistoryRecords = pgTable(
         createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
     },
     (table) => ({
-        historyIdIdx: index('generator_cpf_history_records_history_id_idx').on(table.historyId),
-        hubdoLookupIdIdx: index('generator_cpf_history_records_hubdo_lookup_id_idx').on(table.hubdoLookupId),
+        historyIdIdx: index('gchr_hist_id_idx').on(table.historyId),
+        hubdoLookupIdIdx: index('gchr_hubdo_lu_id_idx').on(table.hubdoLookupId),
     }),
 );
 
@@ -107,7 +107,7 @@ export const hubdoCpfLookups = pgTable(
         updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
     },
     (table) => ({
-        cpfHashIdx: index('hubdo_cpf_lookups_cpf_hash_idx').on(table.cpfHash),
+        cpfHashIdx: index('hcl_cpf_hash_idx').on(table.cpfHash),
     }),
 );
 
@@ -131,8 +131,8 @@ export const hubdoBulkLookupJobs = pgTable(
         finishedAt: timestamp('finished_at', { withTimezone: true }),
     },
     (table) => ({
-        statusIdx: index('hubdo_bulk_lookup_jobs_status_idx').on(table.status),
-        targetNameNormalizedIdx: index('hubdo_bulk_lookup_jobs_target_name_normalized_idx').on(table.targetNameNormalized),
+        statusIdx: index('hblj_status_idx').on(table.status),
+        targetNameNormalizedIdx: index('hblj_tn_norm_idx').on(table.targetNameNormalized),
     }),
 );
 
@@ -156,10 +156,10 @@ export const hubdoBulkLookupJobItems = pgTable(
         finishedAt: timestamp('finished_at', { withTimezone: true }),
     },
     (table) => ({
-        jobIdIdx: index('hubdo_bulk_lookup_job_items_job_id_idx').on(table.jobId),
-        statusIdx: index('hubdo_bulk_lookup_job_items_status_idx').on(table.status),
-        jobCpfUniqueIdx: uniqueIndex('hubdo_bulk_lookup_job_items_job_id_cpf_uidx').on(table.jobId, table.cpf),
-        hubdoLookupIdIdx: index('hubdo_bulk_lookup_job_items_hubdo_lookup_id_idx').on(table.hubdoLookupId),
+        jobIdIdx: index('hblji_job_id_idx').on(table.jobId),
+        statusIdx: index('hblji_status_idx').on(table.status),
+        jobCpfUniqueIdx: uniqueIndex('hblji_job_cpf_uidx').on(table.jobId, table.cpf),
+        hubdoLookupIdIdx: index('hblji_hubdo_lu_id_idx').on(table.hubdoLookupId),
     }),
 );
 
@@ -180,8 +180,8 @@ export const hubdoBulkLookupNameMatches = pgTable(
         updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
     },
     (table) => ({
-        jobIdIdx: index('hubdo_bulk_lookup_name_matches_job_id_idx').on(table.jobId),
-        targetNameNormalizedCpfUid: uniqueIndex('hubdo_bulk_lookup_name_matches_target_name_normalized_cpf_uidx').on(
+        jobIdIdx: index('hblnm_job_id_idx').on(table.jobId),
+        targetNameNormalizedCpfUid: uniqueIndex('hblnm_tn_cpf_uidx').on(
             table.targetNameNormalized,
             table.cpf,
         ),
@@ -205,8 +205,8 @@ export const hubdoBulkLookupNameExclusions = pgTable(
         updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
     },
     (table) => ({
-        jobIdIdx: index('hubdo_bulk_lookup_name_exclusions_job_id_idx').on(table.jobId),
-        targetNameNormalizedCpfUid: uniqueIndex('hubdo_bulk_lookup_name_exclusions_target_name_normalized_cpf_uidx').on(
+        jobIdIdx: index('hblne_job_id_idx').on(table.jobId),
+        targetNameNormalizedCpfUid: uniqueIndex('hblne_tn_cpf_uidx').on(
             table.targetNameNormalized,
             table.cpf,
         ),
