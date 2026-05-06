@@ -4,6 +4,7 @@ import { GeneratorCpfHistoryTable } from '@/components/generator-cpf/generator-c
 import { GeneratorCpfResultsTable } from '@/components/generator-cpf/generator-cpf-results-table';
 import { GeneratorCpfSearchModal } from '@/components/generator-cpf/generator-cpf-search-modal';
 import {
+    BulkHubdoLookupResponse,
     GeneratedCpfRecord,
     GeneratorCpfApiError,
     GeneratorCpfApiResponse,
@@ -53,9 +54,15 @@ export function GeneratorCpfClient() {
     const [selectedHistoryItem, setSelectedHistoryItem] = useState<GeneratorCpfHistoryRecord | null>(null);
     const [selectedHistoryItemId, setSelectedHistoryItemId] = useState<string | null>(null);
     const [isSearchModalOpen, setIsSearchModalOpen] = useState(false);
+    const [selectionEnabled, setSelectionEnabled] = useState(false);
+    const [selectedCpfs, setSelectedCpfs] = useState<string[]>([]);
+    const [isBulkLookupLoading, setIsBulkLookupLoading] = useState(false);
+    const [bulkLookupResult, setBulkLookupResult] = useState<BulkHubdoLookupResponse | null>(null);
+    const [bulkLookupErrorMessage, setBulkLookupErrorMessage] = useState<string | null>(null);
 
     const canGenerate = useMemo(() => partialCpf.trim().length > 0, [partialCpf]);
     const canSave = useMemo(() => partialCpf.trim().length > 0 && records.length > 0, [partialCpf, records]);
+    const canBulkLookup = useMemo(() => selectedCpfs.length > 0, [selectedCpfs]);
 
     async function handleGenerate(event: FormEvent<HTMLFormElement>): Promise<void> {
         event.preventDefault();
@@ -87,10 +94,17 @@ export function GeneratorCpfClient() {
 
             const payload = (await response.json()) as GeneratorCpfApiResponse;
             setRecords(payload.records);
+            setSelectionEnabled(false);
+            setSelectedCpfs([]);
+            setBulkLookupResult(null);
+            setBulkLookupErrorMessage(null);
         } catch (error) {
             const message = error instanceof Error ? error.message : 'Unknown error.';
             setRecords([]);
             setErrorMessage(message);
+            setSelectionEnabled(false);
+            setSelectedCpfs([]);
+            setBulkLookupResult(null);
         } finally {
             setIsLoading(false);
         }
@@ -201,6 +215,57 @@ export function GeneratorCpfClient() {
     function handleSelectCpfFromModal(baseNineDigits: string): void {
         setPartialCpf(baseNineDigits);
         setIsSearchModalOpen(false);
+    }
+
+    function toggleSelectionMode(): void {
+        setSelectionEnabled((current) => {
+            if (current) {
+                setSelectedCpfs([]);
+            }
+
+            return !current;
+        });
+    }
+
+    function toggleCpfSelection(cpf: string): void {
+        setSelectedCpfs((current) =>
+            current.includes(cpf)
+                ? current.filter((value) => value !== cpf)
+                : [...current, cpf],
+        );
+    }
+
+    async function handleBulkLookup(): Promise<void> {
+        if (!canBulkLookup || isBulkLookupLoading) {
+            return;
+        }
+
+        setIsBulkLookupLoading(true);
+        setBulkLookupErrorMessage(null);
+        setBulkLookupResult(null);
+
+        try {
+            const response = await fetch('/api/hubdo-cpf-lookup/bulk', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    Accept: 'application/json',
+                },
+                body: JSON.stringify({ cpfs: selectedCpfs, mode: 'normal' }),
+            });
+
+            const payload = (await response.json()) as BulkHubdoLookupResponse | GeneratorCpfApiError;
+
+            if (!response.ok) {
+                throw new Error((payload as GeneratorCpfApiError).error || 'Bulk HubDo lookup failed.');
+            }
+
+            setBulkLookupResult(payload as BulkHubdoLookupResponse);
+        } catch (error) {
+            setBulkLookupErrorMessage(error instanceof Error ? error.message : 'Unknown error.');
+        } finally {
+            setIsBulkLookupLoading(false);
+        }
     }
 
     return (
@@ -315,7 +380,53 @@ export function GeneratorCpfClient() {
                         />
                     ) : null}
 
-                    {records.length > 0 ? <GeneratorCpfResultsTable records={records} /> : null}
+                    {records.length > 0 ? (
+                        <>
+                            <GeneratorCpfResultsTable
+                                onToggleCpfSelection={toggleCpfSelection}
+                                onToggleSelectionMode={toggleSelectionMode}
+                                records={records}
+                                selectedCpfs={selectedCpfs}
+                                selectionEnabled={selectionEnabled}
+                            />
+
+                            {selectionEnabled ? (
+                                <div className="space-y-2">
+                                    <div className="flex items-center justify-between">
+                                        <p className="text-sm text-muted-foreground">
+                                            {selectedCpfs.length} CPF(s) selected for HubDo lookup.
+                                        </p>
+                                        <Button
+                                            className="rounded-2xl"
+                                            disabled={!canBulkLookup || isBulkLookupLoading}
+                                            onClick={() => {
+                                                void handleBulkLookup();
+                                            }}
+                                            type="button"
+                                        >
+                                            {isBulkLookupLoading ? 'Querying HubDo...' : 'Lookup selected CPFs'}
+                                        </Button>
+                                    </div>
+
+                                    {bulkLookupErrorMessage ? (
+                                        <FriendlyMessage
+                                            description={bulkLookupErrorMessage}
+                                            title="Bulk lookup failed"
+                                            variant="error"
+                                        />
+                                    ) : null}
+
+                                    {bulkLookupResult ? (
+                                        <FriendlyMessage
+                                            description={`${bulkLookupResult.summary.success} success, ${bulkLookupResult.summary.error} error(s), ${bulkLookupResult.summary.total} processed.`}
+                                            title="Bulk lookup completed"
+                                            variant={bulkLookupResult.summary.error > 0 ? 'warning' : 'success'}
+                                        />
+                                    ) : null}
+                                </div>
+                            ) : null}
+                        </>
+                    ) : null}
                 </>
             ) : null}
 

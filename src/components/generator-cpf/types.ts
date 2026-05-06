@@ -29,3 +29,23 @@ export interface PaginatedGeneratorCpfHistory {
     totalItems: number;
     totalPages: number;
 }
+
+export interface BulkHubdoLookupItemResult {
+    cpf: string;
+    status: 'success' | 'error';
+    errorCode?: string;
+    message?: string;
+    creditosConsumidos: number;
+    origem?: 'database' | 'receita_federal' | 'turbo';
+}
+
+export interface BulkHubdoLookupSummary {
+    total: number;
+    success: number;
+    error: number;
+}
+
+export interface BulkHubdoLookupResponse {
+    summary: BulkHubdoLookupSummary;
+    items: BulkHubdoLookupItemResult[];
+}
