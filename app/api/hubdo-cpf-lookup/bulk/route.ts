@@ -1,3 +1,4 @@
+import { createGeneratorCpfHistoryService } from '@/generatorCpfHistory';
 import { createHubdoCpfLookupService } from '@/hubdoCpf';
 import {
     assertCpfProtectionRuntimeConfiguration,
@@ -78,9 +79,22 @@ export async function POST(request: Request): Promise<NextResponse> {
         }
 
         const service = createHubdoCpfLookupService();
+        const generatorHistoryService = createGeneratorCpfHistoryService();
 
         const items = await runWithConcurrency(normalizedCpfs, 4, async (cpf) => {
             const result = await service.lookup({ cpf, mode });
+
+            const latestLookup = await service.listHistory({
+                page: 1,
+                pageSize: 1,
+                cpf,
+            });
+
+            const latestLookupId = latestLookup.items[0]?.id;
+
+            if (latestLookupId) {
+                await generatorHistoryService.linkLookupForCpfRecords(cpf, latestLookupId);
+            }
 
             return {
                 cpf,

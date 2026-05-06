@@ -602,6 +602,7 @@ export function GeneratorCpfClient() {
                                                 records={selectedHistoryItem.resultRecords}
                                                 selectedCpfs={selectedHistoryCpfs}
                                                 selectionEnabled={historySelectionEnabled}
+                                                showHubdoLookupStatus
                                             />
 
                                             {historySelectionEnabled ? (

@@ -41,16 +41,24 @@ export const generatorCpfHistory = pgTable('generator_cpf_history', {
     updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
 });
 
-export const generatorCpfHistoryRecords = pgTable('generator_cpf_history_records', {
-    id: uuid('id').defaultRandom().primaryKey(),
-    historyId: uuid('history_id')
-        .notNull()
-        .references(() => generatorCpfHistory.id, { onDelete: 'cascade' }),
-    cpf: text('cpf').notNull(),
-    formattedCpf: text('formatted_cpf').notNull(),
-    baseNineDigits: text('base_nine_digits').notNull(),
-    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
-});
+export const generatorCpfHistoryRecords = pgTable(
+    'generator_cpf_history_records',
+    {
+        id: uuid('id').defaultRandom().primaryKey(),
+        historyId: uuid('history_id')
+            .notNull()
+            .references(() => generatorCpfHistory.id, { onDelete: 'cascade' }),
+        hubdoLookupId: uuid('hubdo_lookup_id').references(() => hubdoCpfLookups.id, { onDelete: 'set null' }),
+        cpf: text('cpf').notNull(),
+        formattedCpf: text('formatted_cpf').notNull(),
+        baseNineDigits: text('base_nine_digits').notNull(),
+        createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+    },
+    (table) => ({
+        historyIdIdx: index('generator_cpf_history_records_history_id_idx').on(table.historyId),
+        hubdoLookupIdIdx: index('generator_cpf_history_records_hubdo_lookup_id_idx').on(table.hubdoLookupId),
+    }),
+);
 
 export const getCpfsByNameSearchHistory = pgTable('get_cpfs_by_name_search_history', {
     id: uuid('id').defaultRandom().primaryKey(),

@@ -1,5 +1,6 @@
 import {
     CreateGeneratorCpfHistoryInput,
+    GeneratorCpfHistoryDetailsWithLookup,
     GeneratorCpfHistoryListParams,
     GeneratorCpfHistoryRecord,
     GeneratorCpfHistoryRepository,
@@ -16,6 +17,25 @@ export class GeneratorCpfHistoryService {
 
     async getById(id: string): Promise<GeneratorCpfHistoryRecord | null> {
         return this.repository.getById(id);
+    }
+
+    async getByIdWithLookup(id: string): Promise<GeneratorCpfHistoryDetailsWithLookup | null> {
+        const baseRecord = await this.repository.getById(id);
+
+        if (!baseRecord) {
+            return null;
+        }
+
+        const resultRecords = await this.repository.listRecordsWithLookupByHistoryId(id);
+
+        return {
+            ...baseRecord,
+            resultRecords,
+        };
+    }
+
+    async linkLookupForCpfRecords(cpf: string, hubdoLookupId: string): Promise<number> {
+        return this.repository.linkLookupForCpfRecords(cpf, hubdoLookupId);
     }
 
     async update(id: string, updates: UpdateGeneratorCpfHistoryInput): Promise<GeneratorCpfHistoryRecord | null> {

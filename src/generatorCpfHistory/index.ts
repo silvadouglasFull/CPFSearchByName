@@ -3,8 +3,11 @@ import { DrizzleGeneratorCpfHistoryRepository } from '@/generatorCpfHistory/infr
 
 export type {
     CreateGeneratorCpfHistoryInput,
+    GeneratorCpfHistoryDetailsWithLookup,
     GeneratorCpfHistoryListParams,
     GeneratorCpfHistoryRecord,
+    GeneratorCpfHistoryRecordLookupInfo,
+    GeneratorCpfHistoryRecordWithLookup,
     GeneratorCpfHistoryRepository,
     PaginatedGeneratorCpfHistory,
     UpdateGeneratorCpfHistoryInput

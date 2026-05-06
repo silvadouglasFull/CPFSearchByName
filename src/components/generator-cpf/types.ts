@@ -2,6 +2,21 @@ export interface GeneratedCpfRecord {
     cpf: string;
     formattedCpf: string;
     baseNineDigits: string;
+    hubdoLookupId?: string | null;
+    alreadyVerified?: boolean;
+    hubdoLookup?: {
+        id: string;
+        requestStatus: 'OK' | 'NOK';
+        queryMode: 'normal' | 'turbo';
+        errorCode?: string;
+        errorMessage?: string;
+        responseName?: string;
+        responseBirthDate?: string;
+        responseCadastralStatus?: string;
+        creditosConsumidos: number;
+        origem: 'database' | 'receita_federal' | 'turbo';
+        createdAt: string;
+    } | null;
 }
 
 export interface GeneratorCpfApiResponse {

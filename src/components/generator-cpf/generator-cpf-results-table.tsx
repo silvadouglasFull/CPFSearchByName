@@ -16,6 +16,7 @@ interface GeneratorCpfResultsTableProps {
     selectedCpfs?: string[];
     onToggleSelectionMode?: () => void;
     onToggleCpfSelection?: (cpf: string) => void;
+    showHubdoLookupStatus?: boolean;
 }
 
 export function GeneratorCpfResultsTable({
@@ -24,6 +25,7 @@ export function GeneratorCpfResultsTable({
     selectedCpfs = [],
     onToggleSelectionMode,
     onToggleCpfSelection,
+    showHubdoLookupStatus = false,
 }: GeneratorCpfResultsTableProps) {
     return (
         <div className="rounded-3xl border bg-card p-2 shadow-sm md:p-4">
@@ -55,6 +57,7 @@ export function GeneratorCpfResultsTable({
                             <TableHead>CPF</TableHead>
                             <TableHead>Formatted CPF</TableHead>
                             <TableHead>Base 9 Digits</TableHead>
+                            {showHubdoLookupStatus ? <TableHead>HubDo</TableHead> : null}
                         </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -76,6 +79,22 @@ export function GeneratorCpfResultsTable({
                                 <TableCell className="font-mono text-muted-foreground">
                                     {record.baseNineDigits}
                                 </TableCell>
+                                {showHubdoLookupStatus ? (
+                                    <TableCell>
+                                        {record.hubdoLookup ? (
+                                            <div className="space-y-1">
+                                                <p className="text-sm font-medium">
+                                                    {record.hubdoLookup.requestStatus} ({record.hubdoLookup.queryMode})
+                                                </p>
+                                                <p className="text-xs text-muted-foreground">
+                                                    Credits: {record.hubdoLookup.creditosConsumidos} | Origin: {record.hubdoLookup.origem}
+                                                </p>
+                                            </div>
+                                        ) : (
+                                            <span className="text-sm text-muted-foreground">Sem consulta HubDo vinculada</span>
+                                        )}
+                                    </TableCell>
+                                ) : null}
                             </TableRow>
                         ))}
                     </TableBody>

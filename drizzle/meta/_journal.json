@@ -50,6 +50,13 @@
       "when": 1777927956694,
       "tag": "0006_modern_omega_red",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1778094317408,
+      "tag": "0007_aspiring_obadiah_stane",
+      "breakpoints": true
     }
   ]
 }
