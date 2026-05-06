@@ -1,5 +1,5 @@
 import { encryptedCpf } from '@/database/custom-types/encrypted-cpf';
-import { index, integer, jsonb, pgTable, text, timestamp, uuid } from 'drizzle-orm/pg-core';
+import { index, integer, jsonb, pgTable, text, timestamp, uniqueIndex, uuid } from 'drizzle-orm/pg-core';
 
 export const appSettings = pgTable('app_settings', {
     id: uuid('id').defaultRandom().primaryKey(),
@@ -108,5 +108,54 @@ export const hubdoCpfLookups = pgTable(
     },
     (table) => ({
         cpfHashIdx: index('hubdo_cpf_lookups_cpf_hash_idx').on(table.cpfHash),
+    }),
+);
+
+export const hubdoBulkLookupJobs = pgTable(
+    'hubdo_bulk_lookup_jobs',
+    {
+        id: uuid('id').defaultRandom().primaryKey(),
+        mode: text('mode').notNull(), // 'normal' | 'turbo'
+        status: text('status').notNull(), // 'queued' | 'processing' | 'completed' | 'failed'
+        totalItems: integer('total_items').notNull(),
+        queuedItems: integer('queued_items').notNull().default(0),
+        processingItems: integer('processing_items').notNull().default(0),
+        successItems: integer('success_items').notNull().default(0),
+        errorItems: integer('error_items').notNull().default(0),
+        deadLetterItems: integer('dead_letter_items').notNull().default(0),
+        requestedBy: text('requested_by'),
+        createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+        updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+        finishedAt: timestamp('finished_at', { withTimezone: true }),
+    },
+    (table) => ({
+        statusIdx: index('hubdo_bulk_lookup_jobs_status_idx').on(table.status),
+    }),
+);
+
+export const hubdoBulkLookupJobItems = pgTable(
+    'hubdo_bulk_lookup_job_items',
+    {
+        id: uuid('id').defaultRandom().primaryKey(),
+        jobId: uuid('job_id')
+            .notNull()
+            .references(() => hubdoBulkLookupJobs.id, { onDelete: 'cascade' }),
+        cpf: text('cpf').notNull(),
+        status: text('status').notNull(), // 'queued' | 'processing' | 'success' | 'error' | 'dead_letter'
+        attemptCount: integer('attempt_count').notNull().default(0),
+        errorCode: text('error_code'),
+        errorMessage: text('error_message'),
+        creditosConsumidos: integer('creditos_consumidos').notNull().default(0),
+        origin: text('origin'),
+        hubdoLookupId: uuid('hubdo_lookup_id').references(() => hubdoCpfLookups.id, { onDelete: 'set null' }),
+        createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+        updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+        finishedAt: timestamp('finished_at', { withTimezone: true }),
+    },
+    (table) => ({
+        jobIdIdx: index('hubdo_bulk_lookup_job_items_job_id_idx').on(table.jobId),
+        statusIdx: index('hubdo_bulk_lookup_job_items_status_idx').on(table.status),
+        jobCpfUniqueIdx: uniqueIndex('hubdo_bulk_lookup_job_items_job_id_cpf_uidx').on(table.jobId, table.cpf),
+        hubdoLookupIdIdx: index('hubdo_bulk_lookup_job_items_hubdo_lookup_id_idx').on(table.hubdoLookupId),
     }),
 );

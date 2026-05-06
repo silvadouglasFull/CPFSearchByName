@@ -4,6 +4,8 @@ import { GeneratorCpfHistoryTable } from '@/components/generator-cpf/generator-c
 import { GeneratorCpfResultsTable } from '@/components/generator-cpf/generator-cpf-results-table';
 import { GeneratorCpfSearchModal } from '@/components/generator-cpf/generator-cpf-search-modal';
 import {
+    BulkHubdoLookupJobAcceptedResponse,
+    BulkHubdoLookupJobStatusResponse,
     BulkHubdoLookupResponse,
     GeneratedCpfRecord,
     GeneratorCpfApiError,
@@ -71,6 +73,36 @@ export function GeneratorCpfClient() {
     const canSave = useMemo(() => partialCpf.trim().length > 0 && records.length > 0, [partialCpf, records]);
     const canBulkLookup = useMemo(() => selectedCpfs.length > 0, [selectedCpfs]);
     const canHistoryBulkLookup = useMemo(() => selectedHistoryCpfs.length > 0, [selectedHistoryCpfs]);
+
+    async function pollBulkLookupJob(jobId: string): Promise<BulkHubdoLookupJobStatusResponse> {
+        const maxPolls = 120;
+        const delayMs = 1500;
+
+        for (let index = 0; index < maxPolls; index += 1) {
+            const response = await fetch(`/api/hubdo-cpf-lookup/bulk/${jobId}`, {
+                method: 'GET',
+                headers: { Accept: 'application/json' },
+            });
+
+            const payload = (await response.json()) as BulkHubdoLookupJobStatusResponse | GeneratorCpfApiError;
+
+            if (!response.ok) {
+                throw new Error((payload as GeneratorCpfApiError).error || 'Failed to poll bulk lookup status.');
+            }
+
+            const data = payload as BulkHubdoLookupJobStatusResponse;
+
+            if (data.job.status === 'completed' || data.job.status === 'failed') {
+                return data;
+            }
+
+            await new Promise((resolve) => {
+                setTimeout(resolve, delayMs);
+            });
+        }
+
+        throw new Error('Bulk lookup job is taking too long. Try refreshing status in a few moments.');
+    }
 
     function resetHistorySelectionState(): void {
         setHistorySelectionEnabled(false);
@@ -295,13 +327,15 @@ export function GeneratorCpfClient() {
                 body: JSON.stringify({ cpfs: selectedCpfs, mode: bulkLookupMode }),
             });
 
-            const payload = (await response.json()) as BulkHubdoLookupResponse | GeneratorCpfApiError;
+            const payload = (await response.json()) as BulkHubdoLookupJobAcceptedResponse | GeneratorCpfApiError;
 
             if (!response.ok) {
                 throw new Error((payload as GeneratorCpfApiError).error || 'Bulk HubDo lookup failed.');
             }
 
-            setBulkLookupResult(payload as BulkHubdoLookupResponse);
+            const accepted = payload as BulkHubdoLookupJobAcceptedResponse;
+            const finalStatus = await pollBulkLookupJob(accepted.jobId);
+            setBulkLookupResult(finalStatus as BulkHubdoLookupResponse);
         } catch (error) {
             setBulkLookupErrorMessage(error instanceof Error ? error.message : 'Unknown error.');
         } finally {
@@ -329,13 +363,19 @@ export function GeneratorCpfClient() {
                 body: JSON.stringify({ cpfs: deduplicatedCpfs, mode: historyBulkLookupMode }),
             });
 
-            const payload = (await response.json()) as BulkHubdoLookupResponse | GeneratorCpfApiError;
+            const payload = (await response.json()) as BulkHubdoLookupJobAcceptedResponse | GeneratorCpfApiError;
 
             if (!response.ok) {
                 throw new Error((payload as GeneratorCpfApiError).error || 'Bulk HubDo lookup failed.');
             }
 
-            setHistoryBulkLookupResult(payload as BulkHubdoLookupResponse);
+            const accepted = payload as BulkHubdoLookupJobAcceptedResponse;
+            const finalStatus = await pollBulkLookupJob(accepted.jobId);
+            setHistoryBulkLookupResult(finalStatus as BulkHubdoLookupResponse);
+
+            if (selectedHistoryItem) {
+                await handleViewHistoryRecords(selectedHistoryItem.id);
+            }
         } catch (error) {
             setHistoryBulkLookupErrorMessage(error instanceof Error ? error.message : 'Unknown error.');
         } finally {
@@ -351,329 +391,329 @@ export function GeneratorCpfClient() {
                 onSelectCpf={handleSelectCpfFromModal}
             />
             <section className="space-y-6">
-            <div className="flex gap-2">
-                <Button
-                    className="rounded-2xl"
-                    onClick={openSearchTab}
-                    type="button"
-                    variant={activeTab === 'search' ? 'default' : 'outline'}
-                >
-                    Search
-                </Button>
-                <Button
-                    className="rounded-2xl"
-                    onClick={openHistoryTab}
-                    type="button"
-                    variant={activeTab === 'history' ? 'default' : 'outline'}
-                >
-                    History
-                </Button>
-            </div>
+                <div className="flex gap-2">
+                    <Button
+                        className="rounded-2xl"
+                        onClick={openSearchTab}
+                        type="button"
+                        variant={activeTab === 'search' ? 'default' : 'outline'}
+                    >
+                        Search
+                    </Button>
+                    <Button
+                        className="rounded-2xl"
+                        onClick={openHistoryTab}
+                        type="button"
+                        variant={activeTab === 'history' ? 'default' : 'outline'}
+                    >
+                        History
+                    </Button>
+                </div>
 
-            {activeTab === 'search' ? (
-                <>
-                    <Card className="rounded-3xl shadow-sm">
-                        <CardHeader>
-                            <CardTitle>Generate CPF Candidates</CardTitle>
-                            <CardDescription>
-                                Provide a partial CPF from 1 to 9 digits and, optionally, choose a state to apply its
-                                CPF region digit.
-                            </CardDescription>
-                        </CardHeader>
-                        <CardContent>
-                            <form className="grid gap-3 md:grid-cols-[1fr_220px_auto_auto]" onSubmit={handleGenerate}>
-                                <Input
-                                    className="h-11 rounded-2xl"
-                                    onChange={(event) => setPartialCpf(event.target.value)}
-                                    placeholder={PARTIAL_CPF_PLACEHOLDER}
-                                    value={partialCpf}
-                                />
-                                <select
-                                    aria-label="State filter"
-                                    className="h-11 rounded-2xl border bg-background px-3 text-sm outline-none ring-offset-background transition-shadow focus-visible:ring-2 focus-visible:ring-ring/60"
-                                    onChange={(event) => setRegionDigit(event.target.value)}
-                                    value={regionDigit}
-                                >
-                                    <option value="">All states (no region filter)</option>
-                                    {REGION_OPTIONS.map((option) => (
-                                        <option key={option.value} value={option.value}>
-                                            {option.label}
-                                        </option>
-                                    ))}
-                                </select>
-                                <Button
-                                    className="h-11 rounded-2xl px-4"
-                                    onClick={() => setIsSearchModalOpen(true)}
-                                    type="button"
-                                    variant="outline"
-                                    title="Search partial CPF from history"
-                                >
-                                    <Search className="h-4 w-4" />
-                                </Button>
-                                <Button
-                                    className="h-11 rounded-2xl px-6"
-                                    disabled={!canGenerate || isLoading}
-                                    type="submit"
-                                >
-                                    <WandSparkles className="mr-2 h-4 w-4" />
-                                    {isLoading ? 'Generating...' : 'Generate'}
-                                </Button>
-                            </form>
+                {activeTab === 'search' ? (
+                    <>
+                        <Card className="rounded-3xl shadow-sm">
+                            <CardHeader>
+                                <CardTitle>Generate CPF Candidates</CardTitle>
+                                <CardDescription>
+                                    Provide a partial CPF from 1 to 9 digits and, optionally, choose a state to apply its
+                                    CPF region digit.
+                                </CardDescription>
+                            </CardHeader>
+                            <CardContent>
+                                <form className="grid gap-3 md:grid-cols-[1fr_220px_auto_auto]" onSubmit={handleGenerate}>
+                                    <Input
+                                        className="h-11 rounded-2xl"
+                                        onChange={(event) => setPartialCpf(event.target.value)}
+                                        placeholder={PARTIAL_CPF_PLACEHOLDER}
+                                        value={partialCpf}
+                                    />
+                                    <select
+                                        aria-label="State filter"
+                                        className="h-11 rounded-2xl border bg-background px-3 text-sm outline-none ring-offset-background transition-shadow focus-visible:ring-2 focus-visible:ring-ring/60"
+                                        onChange={(event) => setRegionDigit(event.target.value)}
+                                        value={regionDigit}
+                                    >
+                                        <option value="">All states (no region filter)</option>
+                                        {REGION_OPTIONS.map((option) => (
+                                            <option key={option.value} value={option.value}>
+                                                {option.label}
+                                            </option>
+                                        ))}
+                                    </select>
+                                    <Button
+                                        className="h-11 rounded-2xl px-4"
+                                        onClick={() => setIsSearchModalOpen(true)}
+                                        type="button"
+                                        variant="outline"
+                                        title="Search partial CPF from history"
+                                    >
+                                        <Search className="h-4 w-4" />
+                                    </Button>
+                                    <Button
+                                        className="h-11 rounded-2xl px-6"
+                                        disabled={!canGenerate || isLoading}
+                                        type="submit"
+                                    >
+                                        <WandSparkles className="mr-2 h-4 w-4" />
+                                        {isLoading ? 'Generating...' : 'Generate'}
+                                    </Button>
+                                </form>
 
-                            <div className="mt-3 flex justify-end">
-                                <Button
-                                    className="h-11 rounded-2xl px-6"
-                                    disabled={!canSave || isSaving}
-                                    onClick={() => {
-                                        void handleSaveResults();
-                                    }}
-                                    type="button"
-                                    variant="secondary"
-                                >
-                                    <Save className="mr-2 h-4 w-4" />
-                                    {isSaving ? 'Saving...' : 'Salvar Resultados'}
-                                </Button>
-                            </div>
-                        </CardContent>
-                    </Card>
-
-                    {errorMessage ? <FriendlyMessage description={errorMessage} title="Request failed" variant="error" /> : null}
-
-                    {saveMessage ? (
-                        <FriendlyMessage
-                            description={saveMessage}
-                            title={saveMessage === 'Results saved to history.' ? 'Success' : 'Save error'}
-                            variant={saveMessage === 'Results saved to history.' ? 'success' : 'error'}
-                        />
-                    ) : null}
-
-                    {hasGenerated && !isLoading && records.length === 0 && !errorMessage ? (
-                        <FriendlyMessage
-                            description="No valid CPF candidates were generated for the informed values."
-                            title="No candidates found"
-                            variant="info"
-                        />
-                    ) : null}
-
-                    {records.length > 0 ? (
-                        <>
-                            <GeneratorCpfResultsTable
-                                onToggleCpfSelection={toggleCpfSelection}
-                                onToggleSelectionMode={toggleSelectionMode}
-                                records={records}
-                                selectedCpfs={selectedCpfs}
-                                selectionEnabled={selectionEnabled}
-                            />
-
-                            {selectionEnabled ? (
-                                <div className="space-y-2">
-                                    <div className="flex items-center justify-between">
-                                        <p className="text-sm text-muted-foreground">
-                                            {selectedCpfs.length} CPF(s) selected for HubDo lookup.
-                                        </p>
-                                        <div className="flex items-center gap-2">
-                                            <select
-                                                aria-label="Bulk HubDo lookup mode"
-                                                className="h-10 rounded-2xl border bg-background px-3 text-sm"
-                                                disabled={isBulkLookupLoading}
-                                                onChange={(event) => setBulkLookupMode(event.target.value as 'normal' | 'turbo')}
-                                                value={bulkLookupMode}
-                                            >
-                                                <option value="normal">Normal (5 credits)</option>
-                                                <option value="turbo">Turbo (25 credits)</option>
-                                            </select>
-                                            <Button
-                                                className="rounded-2xl"
-                                                disabled={!canBulkLookup || isBulkLookupLoading}
-                                                onClick={() => {
-                                                    void handleBulkLookup();
-                                                }}
-                                                type="button"
-                                            >
-                                                {isBulkLookupLoading ? 'Querying HubDo...' : 'Lookup selected CPFs'}
-                                            </Button>
-                                        </div>
-                                    </div>
-
-                                    {bulkLookupErrorMessage ? (
-                                        <FriendlyMessage
-                                            description={bulkLookupErrorMessage}
-                                            title="Bulk lookup failed"
-                                            variant="error"
-                                        />
-                                    ) : null}
-
-                                    {bulkLookupResult ? (
-                                        <FriendlyMessage
-                                            description={`${bulkLookupResult.summary.success} success, ${bulkLookupResult.summary.error} error(s), ${bulkLookupResult.summary.total} processed in ${bulkLookupMode} mode.`}
-                                            title="Bulk lookup completed"
-                                            variant={bulkLookupResult.summary.error > 0 ? 'warning' : 'success'}
-                                        />
-                                    ) : null}
+                                <div className="mt-3 flex justify-end">
+                                    <Button
+                                        className="h-11 rounded-2xl px-6"
+                                        disabled={!canSave || isSaving}
+                                        onClick={() => {
+                                            void handleSaveResults();
+                                        }}
+                                        type="button"
+                                        variant="secondary"
+                                    >
+                                        <Save className="mr-2 h-4 w-4" />
+                                        {isSaving ? 'Saving...' : 'Salvar Resultados'}
+                                    </Button>
                                 </div>
-                            ) : null}
-                        </>
-                    ) : null}
-                </>
-            ) : null}
+                            </CardContent>
+                        </Card>
 
-            {activeTab === 'history' ? (
-                <>
-                    {isHistoryLoading ? (
-                        <FriendlyMessage
-                            description="Loading saved generations."
-                            title="Loading history"
-                            variant="info"
-                        />
-                    ) : null}
+                        {errorMessage ? <FriendlyMessage description={errorMessage} title="Request failed" variant="error" /> : null}
 
-                    {historyErrorMessage ? (
-                        <FriendlyMessage
-                            description={historyErrorMessage}
-                            title="History error"
-                            variant="error"
-                        />
-                    ) : null}
-
-                    {history && history.items.length > 0 ? (
-                        <>
-                            <GeneratorCpfHistoryTable
-                                isViewingItemId={selectedHistoryItemId}
-                                items={history.items}
-                                onViewRecords={(itemId) => {
-                                    void handleViewHistoryRecords(itemId);
-                                }}
+                        {saveMessage ? (
+                            <FriendlyMessage
+                                description={saveMessage}
+                                title={saveMessage === 'Results saved to history.' ? 'Success' : 'Save error'}
+                                variant={saveMessage === 'Results saved to history.' ? 'success' : 'error'}
                             />
+                        ) : null}
 
-                            <div className="flex items-center justify-end gap-2">
-                                <Button
-                                    className="rounded-2xl"
-                                    disabled={history.page <= 1 || isHistoryLoading}
-                                    onClick={() => {
-                                        void loadHistory(history.page - 1);
-                                    }}
-                                    type="button"
-                                    variant="outline"
-                                >
-                                    Previous
-                                </Button>
-                                <span className="text-sm text-muted-foreground">
-                                    Page {history.page} of {history.totalPages}
-                                </span>
-                                <Button
-                                    className="rounded-2xl"
-                                    disabled={history.page >= history.totalPages || isHistoryLoading}
-                                    onClick={() => {
-                                        void loadHistory(history.page + 1);
-                                    }}
-                                    type="button"
-                                    variant="outline"
-                                >
-                                    Next
-                                </Button>
-                            </div>
+                        {hasGenerated && !isLoading && records.length === 0 && !errorMessage ? (
+                            <FriendlyMessage
+                                description="No valid CPF candidates were generated for the informed values."
+                                title="No candidates found"
+                                variant="info"
+                            />
+                        ) : null}
 
-                            {isHistoryDetailsLoading ? (
-                                <FriendlyMessage
-                                    description="Loading persisted CPF records for the selected snapshot."
-                                    title="Loading details"
-                                    variant="info"
+                        {records.length > 0 ? (
+                            <>
+                                <GeneratorCpfResultsTable
+                                    onToggleCpfSelection={toggleCpfSelection}
+                                    onToggleSelectionMode={toggleSelectionMode}
+                                    records={records}
+                                    selectedCpfs={selectedCpfs}
+                                    selectionEnabled={selectionEnabled}
                                 />
-                            ) : null}
 
-                            {selectedHistoryItem ? (
-                                <>
-                                    <Card className="rounded-3xl shadow-sm">
-                                        <CardHeader>
-                                            <CardTitle>Snapshot Details</CardTitle>
-                                            <CardDescription>
-                                                Partial CPF: {selectedHistoryItem.partialCpf} | Region digit:{' '}
-                                                {selectedHistoryItem.stateRegionDigit ?? 'All states'} | Saved results:{' '}
-                                                {selectedHistoryItem.resultCount}
-                                            </CardDescription>
-                                        </CardHeader>
-                                    </Card>
+                                {selectionEnabled ? (
+                                    <div className="space-y-2">
+                                        <div className="flex items-center justify-between">
+                                            <p className="text-sm text-muted-foreground">
+                                                {selectedCpfs.length} CPF(s) selected for HubDo lookup.
+                                            </p>
+                                            <div className="flex items-center gap-2">
+                                                <select
+                                                    aria-label="Bulk HubDo lookup mode"
+                                                    className="h-10 rounded-2xl border bg-background px-3 text-sm"
+                                                    disabled={isBulkLookupLoading}
+                                                    onChange={(event) => setBulkLookupMode(event.target.value as 'normal' | 'turbo')}
+                                                    value={bulkLookupMode}
+                                                >
+                                                    <option value="normal">Normal (5 credits)</option>
+                                                    <option value="turbo">Turbo (25 credits)</option>
+                                                </select>
+                                                <Button
+                                                    className="rounded-2xl"
+                                                    disabled={!canBulkLookup || isBulkLookupLoading}
+                                                    onClick={() => {
+                                                        void handleBulkLookup();
+                                                    }}
+                                                    type="button"
+                                                >
+                                                    {isBulkLookupLoading ? 'Querying HubDo...' : 'Lookup selected CPFs'}
+                                                </Button>
+                                            </div>
+                                        </div>
 
-                                    {selectedHistoryItem.resultRecords.length > 0 ? (
-                                        <>
-                                            <GeneratorCpfResultsTable
-                                                onToggleCpfSelection={toggleHistoryCpfSelection}
-                                                onToggleSelectionMode={toggleHistorySelectionMode}
-                                                records={selectedHistoryItem.resultRecords}
-                                                selectedCpfs={selectedHistoryCpfs}
-                                                selectionEnabled={historySelectionEnabled}
-                                                showHubdoLookupStatus
+                                        {bulkLookupErrorMessage ? (
+                                            <FriendlyMessage
+                                                description={bulkLookupErrorMessage}
+                                                title="Bulk lookup failed"
+                                                variant="error"
                                             />
+                                        ) : null}
 
-                                            {historySelectionEnabled ? (
-                                                <div className="space-y-2">
-                                                    <div className="flex items-center justify-between">
-                                                        <p className="text-sm text-muted-foreground">
-                                                            {selectedHistoryCpfs.length} CPF(s) selected for HubDo lookup.
-                                                        </p>
-                                                        <div className="flex items-center gap-2">
-                                                            <select
-                                                                aria-label="History bulk HubDo lookup mode"
-                                                                className="h-10 rounded-2xl border bg-background px-3 text-sm"
-                                                                disabled={isHistoryBulkLookupLoading}
-                                                                onChange={(event) => setHistoryBulkLookupMode(event.target.value as 'normal' | 'turbo')}
-                                                                value={historyBulkLookupMode}
-                                                            >
-                                                                <option value="normal">Normal (5 credits)</option>
-                                                                <option value="turbo">Turbo (25 credits)</option>
-                                                            </select>
-                                                            <Button
-                                                                className="rounded-2xl"
-                                                                disabled={!canHistoryBulkLookup || isHistoryBulkLookupLoading}
-                                                                onClick={() => {
-                                                                    void handleHistoryBulkLookup();
-                                                                }}
-                                                                type="button"
-                                                            >
-                                                                {isHistoryBulkLookupLoading ? 'Querying HubDo...' : 'Lookup selected CPFs'}
-                                                            </Button>
+                                        {bulkLookupResult ? (
+                                            <FriendlyMessage
+                                                description={`${bulkLookupResult.summary.success} success, ${bulkLookupResult.summary.error} error(s), ${bulkLookupResult.summary.total} processed in ${bulkLookupMode} mode.`}
+                                                title="Bulk lookup completed"
+                                                variant={bulkLookupResult.summary.error > 0 ? 'warning' : 'success'}
+                                            />
+                                        ) : null}
+                                    </div>
+                                ) : null}
+                            </>
+                        ) : null}
+                    </>
+                ) : null}
+
+                {activeTab === 'history' ? (
+                    <>
+                        {isHistoryLoading ? (
+                            <FriendlyMessage
+                                description="Loading saved generations."
+                                title="Loading history"
+                                variant="info"
+                            />
+                        ) : null}
+
+                        {historyErrorMessage ? (
+                            <FriendlyMessage
+                                description={historyErrorMessage}
+                                title="History error"
+                                variant="error"
+                            />
+                        ) : null}
+
+                        {history && history.items.length > 0 ? (
+                            <>
+                                <GeneratorCpfHistoryTable
+                                    isViewingItemId={selectedHistoryItemId}
+                                    items={history.items}
+                                    onViewRecords={(itemId) => {
+                                        void handleViewHistoryRecords(itemId);
+                                    }}
+                                />
+
+                                <div className="flex items-center justify-end gap-2">
+                                    <Button
+                                        className="rounded-2xl"
+                                        disabled={history.page <= 1 || isHistoryLoading}
+                                        onClick={() => {
+                                            void loadHistory(history.page - 1);
+                                        }}
+                                        type="button"
+                                        variant="outline"
+                                    >
+                                        Previous
+                                    </Button>
+                                    <span className="text-sm text-muted-foreground">
+                                        Page {history.page} of {history.totalPages}
+                                    </span>
+                                    <Button
+                                        className="rounded-2xl"
+                                        disabled={history.page >= history.totalPages || isHistoryLoading}
+                                        onClick={() => {
+                                            void loadHistory(history.page + 1);
+                                        }}
+                                        type="button"
+                                        variant="outline"
+                                    >
+                                        Next
+                                    </Button>
+                                </div>
+
+                                {isHistoryDetailsLoading ? (
+                                    <FriendlyMessage
+                                        description="Loading persisted CPF records for the selected snapshot."
+                                        title="Loading details"
+                                        variant="info"
+                                    />
+                                ) : null}
+
+                                {selectedHistoryItem ? (
+                                    <>
+                                        <Card className="rounded-3xl shadow-sm">
+                                            <CardHeader>
+                                                <CardTitle>Snapshot Details</CardTitle>
+                                                <CardDescription>
+                                                    Partial CPF: {selectedHistoryItem.partialCpf} | Region digit:{' '}
+                                                    {selectedHistoryItem.stateRegionDigit ?? 'All states'} | Saved results:{' '}
+                                                    {selectedHistoryItem.resultCount}
+                                                </CardDescription>
+                                            </CardHeader>
+                                        </Card>
+
+                                        {selectedHistoryItem.resultRecords.length > 0 ? (
+                                            <>
+                                                <GeneratorCpfResultsTable
+                                                    onToggleCpfSelection={toggleHistoryCpfSelection}
+                                                    onToggleSelectionMode={toggleHistorySelectionMode}
+                                                    records={selectedHistoryItem.resultRecords}
+                                                    selectedCpfs={selectedHistoryCpfs}
+                                                    selectionEnabled={historySelectionEnabled}
+                                                    showHubdoLookupStatus
+                                                />
+
+                                                {historySelectionEnabled ? (
+                                                    <div className="space-y-2">
+                                                        <div className="flex items-center justify-between">
+                                                            <p className="text-sm text-muted-foreground">
+                                                                {selectedHistoryCpfs.length} CPF(s) selected for HubDo lookup.
+                                                            </p>
+                                                            <div className="flex items-center gap-2">
+                                                                <select
+                                                                    aria-label="History bulk HubDo lookup mode"
+                                                                    className="h-10 rounded-2xl border bg-background px-3 text-sm"
+                                                                    disabled={isHistoryBulkLookupLoading}
+                                                                    onChange={(event) => setHistoryBulkLookupMode(event.target.value as 'normal' | 'turbo')}
+                                                                    value={historyBulkLookupMode}
+                                                                >
+                                                                    <option value="normal">Normal (5 credits)</option>
+                                                                    <option value="turbo">Turbo (25 credits)</option>
+                                                                </select>
+                                                                <Button
+                                                                    className="rounded-2xl"
+                                                                    disabled={!canHistoryBulkLookup || isHistoryBulkLookupLoading}
+                                                                    onClick={() => {
+                                                                        void handleHistoryBulkLookup();
+                                                                    }}
+                                                                    type="button"
+                                                                >
+                                                                    {isHistoryBulkLookupLoading ? 'Querying HubDo...' : 'Lookup selected CPFs'}
+                                                                </Button>
+                                                            </div>
                                                         </div>
+
+                                                        {historyBulkLookupErrorMessage ? (
+                                                            <FriendlyMessage
+                                                                description={historyBulkLookupErrorMessage}
+                                                                title="Bulk lookup failed"
+                                                                variant="error"
+                                                            />
+                                                        ) : null}
+
+                                                        {historyBulkLookupResult ? (
+                                                            <FriendlyMessage
+                                                                description={`${historyBulkLookupResult.summary.success} success, ${historyBulkLookupResult.summary.error} error(s), ${historyBulkLookupResult.summary.total} processed in ${historyBulkLookupMode} mode.`}
+                                                                title="Bulk lookup completed"
+                                                                variant={historyBulkLookupResult.summary.error > 0 ? 'warning' : 'success'}
+                                                            />
+                                                        ) : null}
                                                     </div>
+                                                ) : null}
+                                            </>
+                                        ) : (
+                                            <FriendlyMessage
+                                                description="This snapshot has no persisted CPF records."
+                                                title="No records in snapshot"
+                                                variant="info"
+                                            />
+                                        )}
+                                    </>
+                                ) : null}
+                            </>
+                        ) : null}
 
-                                                    {historyBulkLookupErrorMessage ? (
-                                                        <FriendlyMessage
-                                                            description={historyBulkLookupErrorMessage}
-                                                            title="Bulk lookup failed"
-                                                            variant="error"
-                                                        />
-                                                    ) : null}
-
-                                                    {historyBulkLookupResult ? (
-                                                        <FriendlyMessage
-                                                            description={`${historyBulkLookupResult.summary.success} success, ${historyBulkLookupResult.summary.error} error(s), ${historyBulkLookupResult.summary.total} processed in ${historyBulkLookupMode} mode.`}
-                                                            title="Bulk lookup completed"
-                                                            variant={historyBulkLookupResult.summary.error > 0 ? 'warning' : 'success'}
-                                                        />
-                                                    ) : null}
-                                                </div>
-                                            ) : null}
-                                        </>
-                                    ) : (
-                                        <FriendlyMessage
-                                            description="This snapshot has no persisted CPF records."
-                                            title="No records in snapshot"
-                                            variant="info"
-                                        />
-                                    )}
-                                </>
-                            ) : null}
-                        </>
-                    ) : null}
-
-                    {history && history.items.length === 0 && !isHistoryLoading ? (
-                        <FriendlyMessage
-                            description="No saved CPF generations yet."
-                            title="Empty history"
-                            variant="info"
-                        />
-                    ) : null}
-                </>
-            ) : null}
+                        {history && history.items.length === 0 && !isHistoryLoading ? (
+                            <FriendlyMessage
+                                description="No saved CPF generations yet."
+                                title="Empty history"
+                                variant="info"
+                            />
+                        ) : null}
+                    </>
+                ) : null}
             </section>
         </>
     );

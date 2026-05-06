@@ -1,5 +1,4 @@
-import { createGeneratorCpfHistoryService } from '@/generatorCpfHistory';
-import { createHubdoCpfLookupService } from '@/hubdoCpf';
+import { createHubdoBulkLookupService } from '@/hubdoCpf';
 import {
     assertCpfProtectionRuntimeConfiguration,
     isCpfProtectionConfigurationError,
@@ -16,28 +15,6 @@ type BulkLookupBody = {
     cpfs?: string[];
     mode?: 'normal' | 'turbo';
 };
-
-async function runWithConcurrency<TInput, TOutput>(
-    items: TInput[],
-    limit: number,
-    worker: (item: TInput) => Promise<TOutput>,
-): Promise<TOutput[]> {
-    const results: TOutput[] = [];
-    let currentIndex = 0;
-
-    async function runWorker(): Promise<void> {
-        while (currentIndex < items.length) {
-            const index = currentIndex;
-            currentIndex += 1;
-            results[index] = await worker(items[index]!);
-        }
-    }
-
-    const workers = Array.from({ length: Math.min(limit, items.length) }, () => runWorker());
-    await Promise.all(workers);
-
-    return results;
-}
 
 export async function POST(request: Request): Promise<NextResponse> {
     try {
@@ -78,47 +55,25 @@ export async function POST(request: Request): Promise<NextResponse> {
             );
         }
 
-        const service = createHubdoCpfLookupService();
-        const generatorHistoryService = createGeneratorCpfHistoryService();
-
-        const items = await runWithConcurrency(normalizedCpfs, 4, async (cpf) => {
-            const result = await service.lookup({ cpf, mode });
-
-            const latestLookup = await service.listHistory({
-                page: 1,
-                pageSize: 1,
-                cpf,
-            });
-
-            const latestLookupId = latestLookup.items[0]?.id;
-
-            if (latestLookupId) {
-                await generatorHistoryService.linkLookupForCpfRecords(cpf, latestLookupId);
-            }
-
-            return {
-                cpf,
-                status: result.status,
-                errorCode: result.errorCode,
-                message: result.message,
-                creditosConsumidos: result.creditosConsumidos,
-                origem: result.origem,
-            };
+        const service = createHubdoBulkLookupService();
+        const created = await service.enqueueBulkJob({
+            cpfs: normalizedCpfs,
+            mode,
         });
-
-        const success = items.filter((item) => item.status === 'success').length;
-        const error = items.length - success;
 
         return NextResponse.json(
             {
+                jobId: created.job.id,
+                status: created.job.status,
                 summary: {
-                    total: items.length,
-                    success,
-                    error,
+                    total: created.summary.total,
+                    queued: created.summary.queued,
+                    processing: created.summary.processing,
+                    success: created.summary.success,
+                    error: created.summary.error + created.summary.deadLetter,
                 },
-                items,
             },
-            { status: 200 },
+            { status: 202 },
         );
     } catch (error) {
         if (isCpfProtectionConfigurationError(error)) {
