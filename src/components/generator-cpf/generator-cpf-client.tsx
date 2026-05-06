@@ -433,7 +433,7 @@ export function GeneratorCpfClient() {
 
                                     {bulkLookupResult ? (
                                         <FriendlyMessage
-                                            description={`${bulkLookupResult.summary.success} success, ${bulkLookupResult.summary.error} error(s), ${bulkLookupResult.summary.total} processed.`}
+                                            description={`${bulkLookupResult.summary.success} success, ${bulkLookupResult.summary.error} error(s), ${bulkLookupResult.summary.total} processed in ${bulkLookupMode} mode.`}
                                             title="Bulk lookup completed"
                                             variant={bulkLookupResult.summary.error > 0 ? 'warning' : 'success'}
                                         />
