@@ -59,6 +59,7 @@ export function GeneratorCpfClient() {
     const [isBulkLookupLoading, setIsBulkLookupLoading] = useState(false);
     const [bulkLookupResult, setBulkLookupResult] = useState<BulkHubdoLookupResponse | null>(null);
     const [bulkLookupErrorMessage, setBulkLookupErrorMessage] = useState<string | null>(null);
+    const [bulkLookupMode, setBulkLookupMode] = useState<'normal' | 'turbo'>('normal');
 
     const canGenerate = useMemo(() => partialCpf.trim().length > 0, [partialCpf]);
     const canSave = useMemo(() => partialCpf.trim().length > 0 && records.length > 0, [partialCpf, records]);
@@ -98,6 +99,7 @@ export function GeneratorCpfClient() {
             setSelectedCpfs([]);
             setBulkLookupResult(null);
             setBulkLookupErrorMessage(null);
+            setBulkLookupMode('normal');
         } catch (error) {
             const message = error instanceof Error ? error.message : 'Unknown error.';
             setRecords([]);
@@ -105,6 +107,7 @@ export function GeneratorCpfClient() {
             setSelectionEnabled(false);
             setSelectedCpfs([]);
             setBulkLookupResult(null);
+            setBulkLookupMode('normal');
         } finally {
             setIsLoading(false);
         }
@@ -251,7 +254,7 @@ export function GeneratorCpfClient() {
                     'Content-Type': 'application/json',
                     Accept: 'application/json',
                 },
-                body: JSON.stringify({ cpfs: selectedCpfs, mode: 'normal' }),
+                body: JSON.stringify({ cpfs: selectedCpfs, mode: bulkLookupMode }),
             });
 
             const payload = (await response.json()) as BulkHubdoLookupResponse | GeneratorCpfApiError;
@@ -396,16 +399,28 @@ export function GeneratorCpfClient() {
                                         <p className="text-sm text-muted-foreground">
                                             {selectedCpfs.length} CPF(s) selected for HubDo lookup.
                                         </p>
-                                        <Button
-                                            className="rounded-2xl"
-                                            disabled={!canBulkLookup || isBulkLookupLoading}
-                                            onClick={() => {
-                                                void handleBulkLookup();
-                                            }}
-                                            type="button"
-                                        >
-                                            {isBulkLookupLoading ? 'Querying HubDo...' : 'Lookup selected CPFs'}
-                                        </Button>
+                                        <div className="flex items-center gap-2">
+                                            <select
+                                                aria-label="Bulk HubDo lookup mode"
+                                                className="h-10 rounded-2xl border bg-background px-3 text-sm"
+                                                disabled={isBulkLookupLoading}
+                                                onChange={(event) => setBulkLookupMode(event.target.value as 'normal' | 'turbo')}
+                                                value={bulkLookupMode}
+                                            >
+                                                <option value="normal">Normal (5 credits)</option>
+                                                <option value="turbo">Turbo (25 credits)</option>
+                                            </select>
+                                            <Button
+                                                className="rounded-2xl"
+                                                disabled={!canBulkLookup || isBulkLookupLoading}
+                                                onClick={() => {
+                                                    void handleBulkLookup();
+                                                }}
+                                                type="button"
+                                            >
+                                                {isBulkLookupLoading ? 'Querying HubDo...' : 'Lookup selected CPFs'}
+                                            </Button>
+                                        </div>
                                     </div>
 
                                     {bulkLookupErrorMessage ? (
