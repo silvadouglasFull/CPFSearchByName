@@ -63,6 +63,7 @@ export interface BulkHubdoLookupSummary {
     processing: number;
     success: number;
     error: number;
+    deadLetter: number;
 }
 
 export interface BulkHubdoLookupJobAcceptedResponse {

@@ -13,6 +13,7 @@ import {
     GeneratorCpfHistoryRecord,
     PaginatedGeneratorCpfHistory,
 } from '@/components/generator-cpf/types';
+import { useHuddoBulkSocket } from '@/components/generator-cpf/use-hubdo-bulk-socket';
 import { FriendlyMessage } from '@/components/shared/friendly-message';
 import { Button } from '@/components/ui/button';
 import {
@@ -38,6 +39,15 @@ const REGION_OPTIONS = Object.entries(STATE_BY_REGION_DIGIT)
     }));
 
 type GeneratorCpfTab = 'search' | 'history';
+
+interface RealtimeJobSummary {
+    total: number;
+    queued: number;
+    processing: number;
+    success: number;
+    error: number;
+    deadLetter: number;
+}
 
 export function GeneratorCpfClient() {
     const [activeTab, setActiveTab] = useState<GeneratorCpfTab>('search');
@@ -68,6 +78,61 @@ export function GeneratorCpfClient() {
     const [isHistoryBulkLookupLoading, setIsHistoryBulkLookupLoading] = useState(false);
     const [historyBulkLookupResult, setHistoryBulkLookupResult] = useState<BulkHubdoLookupResponse | null>(null);
     const [historyBulkLookupErrorMessage, setHistoryBulkLookupErrorMessage] = useState<string | null>(null);
+
+    // Realtime job tracking
+    const [currentJobId, setCurrentJobId] = useState<string | null>(null);
+    const [realtimeSummary, setRealtimeSummary] = useState<RealtimeJobSummary | null>(null);
+
+    // Setup realtime socket for current job
+    useHuddoBulkSocket(currentJobId, {
+        onJobUpdated: (event) => {
+            setRealtimeSummary(event.summary);
+            // Update bulk lookup result with realtime data
+            setBulkLookupResult((prev) =>
+                prev
+                    ? {
+                        ...prev,
+                        job: { ...prev.job, status: event.status as any },
+                        summary: event.summary,
+                    }
+                    : null,
+            );
+        },
+        onJobCompleted: (event) => {
+            setRealtimeSummary({
+                total: event.finalSummary.total,
+                queued: 0,
+                processing: 0,
+                success: event.finalSummary.success,
+                error: event.finalSummary.error,
+                deadLetter: event.finalSummary.deadLetter,
+            });
+            setBulkLookupResult((prev) =>
+                prev
+                    ? {
+                        ...prev,
+                        job: { ...prev.job, status: 'completed' as any },
+                        summary: {
+                            total: event.finalSummary.total,
+                            queued: 0,
+                            processing: 0,
+                            success: event.finalSummary.success,
+                            error: event.finalSummary.error,
+                            deadLetter: event.finalSummary.deadLetter,
+                        },
+                    }
+                    : null,
+            );
+            setCurrentJobId(null);
+        },
+        onJobFailed: (event) => {
+            setBulkLookupErrorMessage('Job processing failed. Please try again.');
+            setCurrentJobId(null);
+        },
+        onError: (error) => {
+            console.error('[Socket.io] Error:', error);
+        },
+    });
 
     const canGenerate = useMemo(() => partialCpf.trim().length > 0, [partialCpf]);
     const canSave = useMemo(() => partialCpf.trim().length > 0 && records.length > 0, [partialCpf, records]);
@@ -316,6 +381,7 @@ export function GeneratorCpfClient() {
         setIsBulkLookupLoading(true);
         setBulkLookupErrorMessage(null);
         setBulkLookupResult(null);
+        setCurrentJobId(null);
 
         try {
             const response = await fetch('/api/hubdo-cpf-lookup/bulk', {
@@ -334,10 +400,36 @@ export function GeneratorCpfClient() {
             }
 
             const accepted = payload as BulkHubdoLookupJobAcceptedResponse;
+
+            // Set job ID to subscribe to realtime updates
+            setCurrentJobId(accepted.jobId);
+            setRealtimeSummary(accepted.summary);
+
+            // Set initial result while waiting for realtime updates
+            setBulkLookupResult({
+                job: {
+                    id: accepted.jobId,
+                    mode: bulkLookupMode,
+                    status: 'queued',
+                    createdAt: new Date().toISOString(),
+                    updatedAt: new Date().toISOString(),
+                    finishedAt: null,
+                },
+                summary: accepted.summary,
+                items: [],
+                page: 1,
+                pageSize: 50,
+                totalItems: 0,
+                totalPages: 1,
+            });
+
+            // Keep polling as fallback for reconciliation
             const finalStatus = await pollBulkLookupJob(accepted.jobId);
             setBulkLookupResult(finalStatus as BulkHubdoLookupResponse);
+            setCurrentJobId(null);
         } catch (error) {
             setBulkLookupErrorMessage(error instanceof Error ? error.message : 'Unknown error.');
+            setCurrentJobId(null);
         } finally {
             setIsBulkLookupLoading(false);
         }
@@ -351,6 +443,7 @@ export function GeneratorCpfClient() {
         setIsHistoryBulkLookupLoading(true);
         setHistoryBulkLookupErrorMessage(null);
         setHistoryBulkLookupResult(null);
+        setCurrentJobId(null);
 
         try {
             const deduplicatedCpfs = Array.from(new Set(selectedHistoryCpfs));
@@ -370,14 +463,22 @@ export function GeneratorCpfClient() {
             }
 
             const accepted = payload as BulkHubdoLookupJobAcceptedResponse;
+
+            // Set job ID to subscribe to realtime updates
+            setCurrentJobId(accepted.jobId);
+            setRealtimeSummary(accepted.summary);
+
+            // Keep polling as fallback for reconciliation
             const finalStatus = await pollBulkLookupJob(accepted.jobId);
             setHistoryBulkLookupResult(finalStatus as BulkHubdoLookupResponse);
+            setCurrentJobId(null);
 
             if (selectedHistoryItem) {
                 await handleViewHistoryRecords(selectedHistoryItem.id);
             }
         } catch (error) {
             setHistoryBulkLookupErrorMessage(error instanceof Error ? error.message : 'Unknown error.');
+            setCurrentJobId(null);
         } finally {
             setIsHistoryBulkLookupLoading(false);
         }
@@ -541,9 +642,9 @@ export function GeneratorCpfClient() {
 
                                         {bulkLookupResult ? (
                                             <FriendlyMessage
-                                                description={`${bulkLookupResult.summary.success} success, ${bulkLookupResult.summary.error} error(s), ${bulkLookupResult.summary.total} processed in ${bulkLookupMode} mode.`}
+                                                description={`${bulkLookupResult.summary.success} success, ${bulkLookupResult.summary.error + bulkLookupResult.summary.deadLetter} error(s), ${bulkLookupResult.summary.total} processed in ${bulkLookupMode} mode.`}
                                                 title="Bulk lookup completed"
-                                                variant={bulkLookupResult.summary.error > 0 ? 'warning' : 'success'}
+                                                variant={bulkLookupResult.summary.error + bulkLookupResult.summary.deadLetter > 0 ? 'warning' : 'success'}
                                             />
                                         ) : null}
                                     </div>
@@ -677,9 +778,9 @@ export function GeneratorCpfClient() {
 
                                                         {historyBulkLookupResult ? (
                                                             <FriendlyMessage
-                                                                description={`${historyBulkLookupResult.summary.success} success, ${historyBulkLookupResult.summary.error} error(s), ${historyBulkLookupResult.summary.total} processed in ${historyBulkLookupMode} mode.`}
+                                                                description={`${historyBulkLookupResult.summary.success} success, ${historyBulkLookupResult.summary.error + historyBulkLookupResult.summary.deadLetter} error(s), ${historyBulkLookupResult.summary.total} processed in ${historyBulkLookupMode} mode.`}
                                                                 title="Bulk lookup completed"
-                                                                variant={historyBulkLookupResult.summary.error > 0 ? 'warning' : 'success'}
+                                                                variant={historyBulkLookupResult.summary.error + historyBulkLookupResult.summary.deadLetter > 0 ? 'warning' : 'success'}
                                                             />
                                                         ) : null}
                                                     </div>
