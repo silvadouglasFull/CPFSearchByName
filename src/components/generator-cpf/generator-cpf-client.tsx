@@ -498,9 +498,15 @@ export function GeneratorCpfClient() {
                         {records.length > 0 ? (
                             <>
                                 <GeneratorCpfResultsTable
+                                    enqueueButtonLabel="Queue selected CPFs"
+                                    isEnqueueingSelectedCpfs={isBulkLookupLoading}
+                                    onEnqueueSelectedCpfs={selectionEnabled ? () => {
+                                        void handleBulkLookup();
+                                    } : undefined}
                                     onToggleCpfSelection={toggleCpfSelection}
                                     onToggleSelectionMode={toggleSelectionMode}
                                     records={records}
+                                    selectedCount={selectedCpfs.length}
                                     selectedCpfs={selectedCpfs}
                                     selectionEnabled={selectionEnabled}
                                 />
@@ -522,16 +528,6 @@ export function GeneratorCpfClient() {
                                                     <option value="normal">Normal (5 credits)</option>
                                                     <option value="turbo">Turbo (25 credits)</option>
                                                 </select>
-                                                <Button
-                                                    className="rounded-2xl"
-                                                    disabled={!canBulkLookup || isBulkLookupLoading}
-                                                    onClick={() => {
-                                                        void handleBulkLookup();
-                                                    }}
-                                                    type="button"
-                                                >
-                                                    {isBulkLookupLoading ? 'Querying HubDo...' : 'Lookup selected CPFs'}
-                                                </Button>
                                             </div>
                                         </div>
 
@@ -637,9 +633,15 @@ export function GeneratorCpfClient() {
                                         {selectedHistoryItem.resultRecords.length > 0 ? (
                                             <>
                                                 <GeneratorCpfResultsTable
+                                                    enqueueButtonLabel="Queue selected CPFs"
+                                                    isEnqueueingSelectedCpfs={isHistoryBulkLookupLoading}
+                                                    onEnqueueSelectedCpfs={historySelectionEnabled ? () => {
+                                                        void handleHistoryBulkLookup();
+                                                    } : undefined}
                                                     onToggleCpfSelection={toggleHistoryCpfSelection}
                                                     onToggleSelectionMode={toggleHistorySelectionMode}
                                                     records={selectedHistoryItem.resultRecords}
+                                                    selectedCount={selectedHistoryCpfs.length}
                                                     selectedCpfs={selectedHistoryCpfs}
                                                     selectionEnabled={historySelectionEnabled}
                                                     showHubdoLookupStatus
@@ -662,16 +664,6 @@ export function GeneratorCpfClient() {
                                                                     <option value="normal">Normal (5 credits)</option>
                                                                     <option value="turbo">Turbo (25 credits)</option>
                                                                 </select>
-                                                                <Button
-                                                                    className="rounded-2xl"
-                                                                    disabled={!canHistoryBulkLookup || isHistoryBulkLookupLoading}
-                                                                    onClick={() => {
-                                                                        void handleHistoryBulkLookup();
-                                                                    }}
-                                                                    type="button"
-                                                                >
-                                                                    {isHistoryBulkLookupLoading ? 'Querying HubDo...' : 'Lookup selected CPFs'}
-                                                                </Button>
                                                             </div>
                                                         </div>
 

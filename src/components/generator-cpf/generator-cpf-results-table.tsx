@@ -16,6 +16,10 @@ interface GeneratorCpfResultsTableProps {
     selectedCpfs?: string[];
     onToggleSelectionMode?: () => void;
     onToggleCpfSelection?: (cpf: string) => void;
+    onEnqueueSelectedCpfs?: () => void;
+    isEnqueueingSelectedCpfs?: boolean;
+    selectedCount?: number;
+    enqueueButtonLabel?: string;
     showHubdoLookupStatus?: boolean;
 }
 
@@ -25,6 +29,10 @@ export function GeneratorCpfResultsTable({
     selectedCpfs = [],
     onToggleSelectionMode,
     onToggleCpfSelection,
+    onEnqueueSelectedCpfs,
+    isEnqueueingSelectedCpfs = false,
+    selectedCount = 0,
+    enqueueButtonLabel = 'Queue selected CPFs',
     showHubdoLookupStatus = false,
 }: GeneratorCpfResultsTableProps) {
     return (
@@ -41,6 +49,17 @@ export function GeneratorCpfResultsTable({
                             variant="outline"
                         >
                             {selectionEnabled ? 'Disable selection' : 'Enable selection'}
+                        </Button>
+                    ) : null}
+                    {onEnqueueSelectedCpfs ? (
+                        <Button
+                            className="rounded-2xl"
+                            disabled={selectedCount <= 0 || isEnqueueingSelectedCpfs}
+                            onClick={onEnqueueSelectedCpfs}
+                            size="sm"
+                            type="button"
+                        >
+                            {isEnqueueingSelectedCpfs ? 'Queueing...' : enqueueButtonLabel}
                         </Button>
                     ) : null}
                     <Badge className="rounded-full" variant="secondary">
