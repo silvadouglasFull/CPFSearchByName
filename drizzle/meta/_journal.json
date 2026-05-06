@@ -71,6 +71,13 @@
       "when": 1778106903123,
       "tag": "0009_aspiring_silver_centurion",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1778107609368,
+      "tag": "0010_demonic_black_crow",
+      "breakpoints": true
     }
   ]
 }
