@@ -1,5 +1,5 @@
 import { encryptedCpf } from '@/database/custom-types/encrypted-cpf';
-import { index, integer, jsonb, pgTable, text, timestamp, uniqueIndex, uuid } from 'drizzle-orm/pg-core';
+import { boolean, index, integer, jsonb, pgTable, text, timestamp, uniqueIndex, uuid } from 'drizzle-orm/pg-core';
 
 export const appSettings = pgTable('app_settings', {
     id: uuid('id').defaultRandom().primaryKey(),
@@ -118,13 +118,18 @@ export const hubdoBulkLookupJobs = pgTable(
         mode: text('mode').notNull(), // 'normal' | 'turbo'
         targetName: text('target_name').notNull(),
         targetNameNormalized: text('target_name_normalized').notNull(),
-        status: text('status').notNull(), // 'queued' | 'processing' | 'completed' | 'failed'
+        status: text('status').notNull(), // 'queued' | 'processing' | 'completed' | 'failed' | 'found'
         totalItems: integer('total_items').notNull(),
         queuedItems: integer('queued_items').notNull().default(0),
         processingItems: integer('processing_items').notNull().default(0),
         successItems: integer('success_items').notNull().default(0),
         errorItems: integer('error_items').notNull().default(0),
         deadLetterItems: integer('dead_letter_items').notNull().default(0),
+        skippedItems: integer('skipped_items').notNull().default(0),
+        findMatchMode: boolean('find_match_mode').notNull().default(false),
+        foundCpf: text('found_cpf'),
+        foundName: text('found_name'),
+        foundBirthDate: text('found_birth_date'),
         requestedBy: text('requested_by'),
         createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
         updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),

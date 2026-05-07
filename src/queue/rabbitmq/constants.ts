@@ -2,6 +2,8 @@ export const HUBDO_BULK_LOOKUP_EXCHANGE = 'hubdo.bulk.lookup.exchange';
 export const HUBDO_BULK_LOOKUP_QUEUE = 'hubdo.bulk.lookup.queue';
 export const HUBDO_BULK_LOOKUP_ROUTING_KEY = 'hubdo.bulk.lookup.item';
 
+export const HUBDO_BULK_LOOKUP_FIND_MATCH_QUEUE = 'hubdo.bulk.lookup.find.match.queue';
+
 export const HUBDO_BULK_LOOKUP_DLX_EXCHANGE = 'hubdo.bulk.lookup.dlx';
 export const HUBDO_BULK_LOOKUP_DLQ = 'hubdo.bulk.lookup.dlq';
 export const HUBDO_BULK_LOOKUP_DLQ_ROUTING_KEY = 'hubdo.bulk.lookup.item.dead';

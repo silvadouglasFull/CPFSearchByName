@@ -44,6 +44,13 @@ export interface HuddoBulkJobTerminalEvent {
     finishedAt: string;
 }
 
+export interface HuddoBulkFindMatchFoundEvent {
+    jobId: string;
+    foundCpf: string;
+    foundName: string;
+    foundBirthDate: string | null;
+}
+
 /**
  * Emit item status update to job room
  */
@@ -99,5 +106,24 @@ export function emitHubdoBulkJobTerminal(event: HuddoBulkJobTerminalEvent): void
         io.of('/hubdo-bulk').to(room).emit(eventName, event);
     } catch (error) {
         console.error(`[Socket.io] Failed to emit job terminal event:`, error);
+    }
+}
+
+/**
+ * Emit find-match found event when a matching person name is found
+ */
+export function emitHubdoBulkFindMatchFound(event: HuddoBulkFindMatchFoundEvent): void {
+    const io = getSocketIOServer();
+    if (!io) {
+        console.warn('[Socket.io] Server not initialized, skipping find-match found event');
+        return;
+    }
+
+    const room = `hubdo:job:${event.jobId}`;
+
+    try {
+        io.of('/hubdo-bulk').to(room).emit('hubdo.bulk.find.match.found', event);
+    } catch (error) {
+        console.error(`[Socket.io] Failed to emit find-match found event:`, error);
     }
 }

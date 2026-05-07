@@ -199,6 +199,126 @@ export class DrizzleHubdoBulkLookupRepository implements HubdoBulkLookupReposito
             });
     }
 
+    async createFindMatchJob(input: {
+        cpfs: string[];
+        mode: 'normal' | 'turbo';
+        targetName: string;
+        targetNameNormalized: string;
+        requestedBy?: string;
+    }): Promise<HubdoBulkLookupCreateJobResult> {
+        return db.transaction(async (tx) => {
+            const insertedJobs = await tx
+                .insert(hubdoBulkLookupJobs)
+                .values({
+                    mode: input.mode,
+                    targetName: input.targetName,
+                    targetNameNormalized: input.targetNameNormalized,
+                    findMatchMode: true,
+                    status: 'queued',
+                    totalItems: input.cpfs.length,
+                    queuedItems: input.cpfs.length,
+                    processingItems: 0,
+                    successItems: 0,
+                    errorItems: 0,
+                    skippedItems: 0,
+                    deadLetterItems: 0,
+                    requestedBy: input.requestedBy ?? null,
+                })
+                .returning();
+
+            const job = insertedJobs[0];
+            if (!job) {
+                throw new Error('Failed to create find-match bulk lookup job.');
+            }
+
+            const insertedItems = input.cpfs.length
+                ? await tx
+                    .insert(hubdoBulkLookupJobItems)
+                    .values(
+                        input.cpfs.map((cpf) => ({
+                            jobId: job.id,
+                            cpf,
+                            status: 'queued',
+                            attemptCount: 0,
+                        })),
+                    )
+                    .returning()
+                : [];
+
+            const mappedJob = this.mapJob(job);
+            const mappedItems = insertedItems.map((item) => this.mapItem(item));
+
+            return {
+                job: mappedJob,
+                items: mappedItems,
+                summary: {
+                    total: mappedJob.totalItems,
+                    queued: mappedJob.queuedItems,
+                    processing: mappedJob.processingItems,
+                    success: mappedJob.successItems,
+                    error: mappedJob.errorItems,
+                    deadLetter: mappedJob.deadLetterItems,
+                },
+            };
+        });
+    }
+
+    async markItemSkipped(itemId: string): Promise<void> {
+        await db
+            .update(hubdoBulkLookupJobItems)
+            .set({
+                status: 'queued', // Mark as queued to indicate skipped
+                updatedAt: new Date(),
+            })
+            .where(eq(hubdoBulkLookupJobItems.id, itemId));
+    }
+
+    async markFindMatchJobAsFound(jobId: string, cpf: string, name: string, birthDate: string | null): Promise<void> {
+        await db
+            .update(hubdoBulkLookupJobs)
+            .set({
+                status: 'found',
+                foundCpf: cpf,
+                foundName: name,
+                foundBirthDate: birthDate,
+                finishedAt: new Date(),
+                updatedAt: new Date(),
+            })
+            .where(eq(hubdoBulkLookupJobs.id, jobId));
+    }
+
+    async markFindMatchItemsAsSkipped(jobId: string): Promise<void> {
+        await db
+            .update(hubdoBulkLookupJobItems)
+            .set({
+                status: 'queued', // Mark remaining as skipped
+                updatedAt: new Date(),
+            })
+            .where(and(
+                eq(hubdoBulkLookupJobItems.jobId, jobId),
+                eq(hubdoBulkLookupJobItems.status, 'queued')
+            ));
+
+        // Update skipped count in job
+        const items = await db
+            .select({ count: sql<number>`COUNT(*)` })
+            .from(hubdoBulkLookupJobItems)
+            .where(and(
+                eq(hubdoBulkLookupJobItems.jobId, jobId),
+                eq(hubdoBulkLookupJobItems.status, 'queued')
+            ));
+
+        const skippedCount = items[0]?.count ?? 0;
+
+        await db
+            .update(hubdoBulkLookupJobs)
+            .set({
+                skippedItems: skippedCount,
+                updatedAt: new Date(),
+            })
+            .where(eq(hubdoBulkLookupJobs.id, jobId));
+    }
+
     async markItemProcessing(itemId: string, attemptCount: number): Promise<void> {
         await db.transaction(async (tx) => {
             const rows = await tx

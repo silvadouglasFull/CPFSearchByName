@@ -135,4 +135,14 @@ export interface HubdoBulkLookupRepository {
         errorCode?: string;
         errorMessage?: string;
     }): Promise<void>;
+    markItemSkipped(itemId: string): Promise<void>;
+    createFindMatchJob(input: {
+        cpfs: string[];
+        mode: HubdoBulkLookupMode;
+        targetName: string;
+        targetNameNormalized: string;
+        requestedBy?: string;
+    }): Promise<HubdoBulkLookupCreateJobResult>;
+    markFindMatchJobAsFound(jobId: string, cpf: string, name: string, birthDate: string | null): Promise<void>;
+    markFindMatchItemsAsSkipped(jobId: string): Promise<void>;
 }

@@ -88,6 +88,7 @@ export function GeneratorCpfClient() {
     const [isBulkConfirmOpen, setIsBulkConfirmOpen] = useState(false);
     const [bulkConfirmSource, setBulkConfirmSource] = useState<'search' | 'history' | null>(null);
     const [bulkConfirmTargetName, setBulkConfirmTargetName] = useState('');
+    const [bulkConfirmFindMatchMode, setBulkConfirmFindMatchMode] = useState(false);
 
     // Realtime job tracking
     const [currentJobId, setCurrentJobId] = useState<string | null>(null);
@@ -441,6 +442,7 @@ export function GeneratorCpfClient() {
 
         setIsBulkConfirmOpen(false);
         setBulkConfirmSource(null);
+        setBulkConfirmFindMatchMode(false);
     }
 
     async function handleBulkLookup(targetName: string): Promise<void> {
@@ -669,17 +671,131 @@ export function GeneratorCpfClient() {
             return;
         }
 
-        if (bulkConfirmSource === 'search') {
-            await handleBulkLookup(targetName);
-        }
-
-        if (bulkConfirmSource === 'history') {
-            await handleHistoryBulkLookup(targetName);
+        if (bulkConfirmFindMatchMode) {
+            if (bulkConfirmSource === 'search') {
+                await handleBulkLookupFindMatch(targetName);
+            }
+            if (bulkConfirmSource === 'history') {
+                await handleHistoryBulkLookupFindMatch(targetName);
+            }
+        } else {
+            if (bulkConfirmSource === 'search') {
+                await handleBulkLookup(targetName);
+            }
+            if (bulkConfirmSource === 'history') {
+                await handleHistoryBulkLookup(targetName);
+            }
         }
 
         if (!isBulkLookupLoading && !isHistoryBulkLookupLoading) {
             setIsBulkConfirmOpen(false);
             setBulkConfirmSource(null);
+        }
+    }
+
+    async function handleBulkLookupFindMatch(targetName: string): Promise<void> {
+        if (!canBulkLookup || isBulkLookupLoading) {
+            return;
+        }
+
+        setIsBulkLookupLoading(true);
+        setBulkLookupErrorMessage(null);
+        setBulkLookupResult(null);
+        setCurrentJobId(null);
+
+        try {
+            const response = await fetch('/api/hubdo-cpf-lookup/bulk-find-match', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    Accept: 'application/json',
+                },
+                body: JSON.stringify({ cpfs: selectedCpfs, mode: bulkLookupMode, targetName }),
+            });
+
+            const payload = (await response.json()) as BulkHubdoLookupJobAcceptedResponse | GeneratorCpfApiError;
+
+            if (!response.ok) {
+                throw new Error((payload as GeneratorCpfApiError).error || 'Find-match bulk lookup failed.');
+            }
+
+            const accepted = payload as BulkHubdoLookupJobAcceptedResponse;
+
+            setCurrentJobId(accepted.jobId);
+            setRealtimeSummary(accepted.summary);
+
+            setBulkLookupResult({
+                job: {
+                    id: accepted.jobId,
+                    mode: bulkLookupMode,
+                    status: 'queued',
+                    createdAt: new Date().toISOString(),
+                    updatedAt: new Date().toISOString(),
+                    finishedAt: null,
+                },
+                summary: accepted.summary,
+                items: [],
+                page: 1,
+                pageSize: 50,
+                totalItems: 0,
+                totalPages: 1,
+            });
+
+            const finalStatus = await pollBulkLookupJob(accepted.jobId);
+            setBulkLookupResult(finalStatus as BulkHubdoLookupResponse);
+            setCurrentJobId(null);
+        } catch (error) {
+            setBulkLookupErrorMessage(error instanceof Error ? error.message : 'Unknown error.');
+            setCurrentJobId(null);
+        } finally {
+            setIsBulkLookupLoading(false);
+        }
+    }
+
+    async function handleHistoryBulkLookupFindMatch(targetName: string): Promise<void> {
+        if (!canHistoryBulkLookup || isHistoryBulkLookupLoading) {
+            return;
+        }
+
+        setIsHistoryBulkLookupLoading(true);
+        setHistoryBulkLookupErrorMessage(null);
+        setHistoryBulkLookupResult(null);
+        setCurrentJobId(null);
+
+        try {
+            const deduplicatedCpfs = Array.from(new Set(selectedHistoryCpfs));
+            const response = await fetch('/api/hubdo-cpf-lookup/bulk-find-match', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    Accept: 'application/json',
+                },
+                body: JSON.stringify({ cpfs: deduplicatedCpfs, mode: historyBulkLookupMode, targetName }),
+            });
+
+            const payload = (await response.json()) as BulkHubdoLookupJobAcceptedResponse | GeneratorCpfApiError;
+
+            if (!response.ok) {
+                throw new Error((payload as GeneratorCpfApiError).error || 'Find-match bulk lookup failed.');
+            }
+
+            const accepted = payload as BulkHubdoLookupJobAcceptedResponse;
+
+            setCurrentJobId(accepted.jobId);
+            setRealtimeSummary(accepted.summary);
+
+            const finalStatus = await pollBulkLookupJob(accepted.jobId);
+            setHistoryBulkLookupResult(finalStatus as BulkHubdoLookupResponse);
+            setCurrentJobId(null);
+
+            if (selectedHistoryItem) {
+                await handleViewHistoryRecords(selectedHistoryItem.id);
+            }
+        } catch (error) {
+            setHistoryBulkLookupErrorMessage(error instanceof Error ? error.message : 'Unknown error.');
+            setCurrentJobId(null);
+        } finally {
+            setIsHistoryBulkLookupLoading(false);
         }
     }
 
@@ -712,6 +828,18 @@ export function GeneratorCpfClient() {
                                 placeholder="Ex.: Vanessa Silva dos Reis"
                                 value={bulkConfirmTargetName}
                             />
+                        </div>
+                        <div className="flex items-center gap-2">
+                            <input
+                                checked={bulkConfirmFindMatchMode}
+                                disabled={isBulkLookupLoading || isHistoryBulkLookupLoading || !bulkConfirmTargetName.trim()}
+                                id="find-match-mode"
+                                onChange={(e) => setBulkConfirmFindMatchMode(e.target.checked)}
+                                type="checkbox"
+                            />
+                            <label className="text-sm text-muted-foreground" htmlFor="find-match-mode">
+                                Stop when name matches (find-match mode)
+                            </label>
                         </div>
                         <div className="flex items-center justify-end gap-2">
                             <Button

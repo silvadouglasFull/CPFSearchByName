@@ -102,6 +102,57 @@ export class HubdoBulkLookupService {
         return created;
     }
 
+    async enqueueBulkJobFindMatch(input: {
+        cpfs: string[];
+        mode: HubdoBulkLookupMode;
+        targetName: string;
+        requestedBy?: string;
+    }): Promise<HubdoBulkLookupCreateJobResult> {
+        const targetName = input.targetName.trim();
+        if (!targetName) {
+            throw new Error('Target name is required for find-match mode.');
+        }
+
+        const targetNameNormalized = normalizePersonName(targetName);
+        const normalizedCpfs = Array.from(
+            new Set(
+                input.cpfs
+                    .map((cpf) => normalizeCpf(cpf))
+                    .filter((cpf) => cpf.length > 0),
+            ),
+        );
+
+        if (normalizedCpfs.length === 0) {
+            throw new Error('No valid CPF values were provided.');
+        }
+
+        // Create find-match job (NO exclusion filtering - search all)
+        const created = await this.repository.createFindMatchJob({
+            cpfs: normalizedCpfs,
+            mode: input.mode,
+            targetName,
+            targetNameNormalized,
+            requestedBy: input.requestedBy,
+        });
+
+        // Import will be added: publishHubdoBulkLookupFindMatchItem
+        const { publishHubdoBulkLookupFindMatchItem } = await import('@/queue/rabbitmq/publisher');
+
+        await Promise.all(
+            created.items.map((item) =>
+                publishHubdoBulkLookupFindMatchItem({
+                    jobId: created.job.id,
+                    itemId: item.id,
+                    cpf: item.cpf,
+                    mode: created.job.mode,
+                    attempt: 1,
+                }),
+            ),
+        );
+
+        return created;
+    }
+
     async getJobStatus(params: HubdoBulkLookupGetStatusParams): Promise<HubdoBulkLookupJobStatusView | null> {
         return this.repository.getStatus(params);
     }
