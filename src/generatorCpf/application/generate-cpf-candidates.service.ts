@@ -35,6 +35,7 @@ export class GenerateCpfCandidatesService {
                     cpf: generatedCpf,
                     formattedCpf: formatCpf(generatedCpf),
                     baseNineDigits,
+                    regionDigit: regionDigitInput,
                 });
             }
         }

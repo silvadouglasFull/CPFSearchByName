@@ -1,6 +1,7 @@
+import dotenv from 'dotenv';
 import { drizzle } from 'drizzle-orm/postgres-js';
 import postgres from 'postgres';
-
+dotenv.config()
 declare global {
     var _postgresConn: postgres.Sql | undefined;
 }

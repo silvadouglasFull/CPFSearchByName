@@ -21,9 +21,9 @@ export function AppShell({ children }: AppShellProps) {
     }
 
     return (
-        <div className="flex min-h-screen w-full bg-gradient-to-br from-background to-muted/30">
-            <div className="hidden w-80 shrink-0 md:block">
-                <Sidebar className="h-screen rounded-none" />
+        <div className="flex min-h-screen w-full items-stretch bg-linear-to-br from-background to-muted/30">
+            <div className="hidden w-80 shrink-0 self-stretch md:flex">
+                <Sidebar className="flex-1 rounded-none" />
             </div>
 
             <div className="relative flex min-w-0 flex-1 flex-col">
@@ -50,7 +50,7 @@ export function AppShell({ children }: AppShellProps) {
                     )}
                     id="mobile-sidebar"
                 >
-                    <Sidebar className="h-full rounded-none" onNavigate={closeSidebar} />
+                    <Sidebar className="min-h-full rounded-none" onNavigate={closeSidebar} />
                 </div>
 
                 <div className="flex-1">{children}</div>

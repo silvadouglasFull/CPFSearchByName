@@ -17,5 +17,16 @@ services:
       timeout: 5s
       retries: 5
 
+  rabbitmq:
+    image: rabbitmq:3.13-management-alpine
+    container_name: verifydocs-rabbitmq-1
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    restart: unless-stopped
+    volumes:
+      - verifydocs-rabbitmq-data:/var/lib/rabbitmq
+
 volumes:
   verifydocs-db-data:
+  verifydocs-rabbitmq-data:

@@ -11,7 +11,6 @@ const generatorService = new GenerateCpfCandidatesService();
 export async function GET(request: Request): Promise<NextResponse> {
     const { searchParams } = new URL(request.url);
     const partialCpf = normalizePartialCpf(searchParams.get('partialCpf'));
-
     try {
         const regionDigit = normalizeRegionDigit(searchParams.get('regionDigit'));
         const records = generatorService.generate(partialCpf, regionDigit);

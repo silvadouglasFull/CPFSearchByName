@@ -15,7 +15,7 @@ export function Sidebar({ className, onNavigate }: SidebarProps) {
     const pathname = usePathname();
 
     return (
-        <aside className={cn('flex h-full flex-col rounded-none border-r bg-card', className)}>
+        <aside className={cn('flex min-h-full w-full flex-col rounded-none border-r bg-card', className)}>
             <div className="flex items-center justify-between border-b px-4 py-4">
                 <div className="space-y-1">
                     <p className="text-sm text-muted-foreground">Navigation</p>

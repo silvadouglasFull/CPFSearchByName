@@ -294,7 +294,7 @@ export function GetCpfsByNameClient() {
                                     variant="secondary"
                                 >
                                     <Save className="mr-2 h-4 w-4" />
-                                    {isSaving ? 'Saving...' : 'Salvar Resultados'}
+                                    {isSaving ? 'Saving...' : 'Save Results'}
                                 </Button>
                             </div>
                         </CardContent>

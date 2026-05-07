@@ -1,0 +1,4 @@
+ALTER TABLE "generator_cpf_history_records" ADD COLUMN "hubdo_lookup_id" uuid;--> statement-breakpoint
+ALTER TABLE "generator_cpf_history_records" ADD CONSTRAINT "generator_cpf_history_records_hubdo_lookup_id_hubdo_cpf_lookups_id_fk" FOREIGN KEY ("hubdo_lookup_id") REFERENCES "public"."hubdo_cpf_lookups"("id") ON DELETE set null ON UPDATE no action;--> statement-breakpoint
+CREATE INDEX "generator_cpf_history_records_history_id_idx" ON "generator_cpf_history_records" USING btree ("history_id");--> statement-breakpoint
+CREATE INDEX "generator_cpf_history_records_hubdo_lookup_id_idx" ON "generator_cpf_history_records" USING btree ("hubdo_lookup_id");

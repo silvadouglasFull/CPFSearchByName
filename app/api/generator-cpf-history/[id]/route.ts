@@ -11,7 +11,7 @@ export async function GET(_: Request, context: RouteContext): Promise<NextRespon
     try {
         const { id } = await context.params;
         const service = createGeneratorCpfHistoryService();
-        const item = await service.getById(id);
+        const item = await service.getByIdWithLookup(id);
 
         if (!item) {
             return NextResponse.json({ error: 'History record not found.' }, { status: 404 });

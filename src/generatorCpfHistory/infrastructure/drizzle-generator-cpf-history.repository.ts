@@ -1,9 +1,11 @@
 import { db } from '@/database/db';
-import { generatorCpfHistory, generatorCpfHistoryRecords } from '@/database/schema';
+import { generatorCpfHistory, generatorCpfHistoryRecords, hubdoCpfLookups } from '@/database/schema';
 import {
     CreateGeneratorCpfHistoryInput,
     GeneratorCpfHistoryListParams,
     GeneratorCpfHistoryRecord,
+    GeneratorCpfHistoryRecordLookupInfo,
+    GeneratorCpfHistoryRecordWithLookup,
     GeneratorCpfHistoryRepository,
     PaginatedGeneratorCpfHistory,
     UpdateGeneratorCpfHistoryInput,
@@ -65,6 +67,55 @@ export class DrizzleGeneratorCpfHistoryRepository implements GeneratorCpfHistory
             .orderBy(asc(generatorCpfHistoryRecords.createdAt));
 
         return this.mapRecord(snapshot[0], records);
+    }
+
+    async listRecordsWithLookupByHistoryId(historyId: string): Promise<GeneratorCpfHistoryRecordWithLookup[]> {
+        const rows = await db
+            .select({
+                record: generatorCpfHistoryRecords,
+                lookup: hubdoCpfLookups,
+            })
+            .from(generatorCpfHistoryRecords)
+            .leftJoin(hubdoCpfLookups, eq(generatorCpfHistoryRecords.hubdoLookupId, hubdoCpfLookups.id))
+            .where(eq(generatorCpfHistoryRecords.historyId, historyId))
+            .orderBy(asc(generatorCpfHistoryRecords.createdAt));
+
+        return rows.map(({ record, lookup }) => {
+            const mappedLookup: GeneratorCpfHistoryRecordLookupInfo | null = lookup
+                ? {
+                    id: lookup.id,
+                    requestStatus: lookup.requestStatus as 'OK' | 'NOK',
+                    queryMode: lookup.queryMode as 'normal' | 'turbo',
+                    errorCode: lookup.errorCode ?? undefined,
+                    errorMessage: lookup.errorMessage ?? undefined,
+                    responseName: lookup.responseName ?? undefined,
+                    responseBirthDate: lookup.responseBirthDate ?? undefined,
+                    responseCadastralStatus: lookup.responseCadastralStatus ?? undefined,
+                    creditosConsumidos: lookup.creditosConsumidos,
+                    origem: lookup.origem as 'database' | 'receita_federal' | 'turbo',
+                    createdAt: lookup.createdAt,
+                }
+                : null;
+
+            return {
+                cpf: record.cpf,
+                formattedCpf: record.formattedCpf,
+                baseNineDigits: record.baseNineDigits,
+                hubdoLookupId: record.hubdoLookupId ?? null,
+                alreadyVerified: record.hubdoLookupId !== null,
+                hubdoLookup: mappedLookup,
+            };
+        });
+    }
+
+    async linkLookupForCpfRecords(cpf: string, hubdoLookupId: string): Promise<number> {
+        const updated = await db
+            .update(generatorCpfHistoryRecords)
+            .set({ hubdoLookupId })
+            .where(eq(generatorCpfHistoryRecords.cpf, cpf))
+            .returning({ id: generatorCpfHistoryRecords.id });
+
+        return updated.length;
     }
 
     async update(id: string, updates: UpdateGeneratorCpfHistoryInput): Promise<GeneratorCpfHistoryRecord | null> {
