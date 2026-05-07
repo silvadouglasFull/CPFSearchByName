@@ -142,34 +142,37 @@ export async function startHubdoBulkConsumer(deps: {
                 });
 
                 const lookupName = lookupResult.nome?.trim();
-                if (lookupName) {
-                    try {
-                        const jobTarget = await getJobTargetName(parsed.jobId);
-                        if (jobTarget) {
-                            const foundNameNormalized = normalizePersonName(lookupName);
-                            const isMatch = foundNameNormalized === jobTarget.targetNameNormalized;
+                const jobTarget = await getJobTargetName(parsed.jobId);
 
-                            if (isMatch) {
-                                await deps.bulkRepository.recordNameMatch({
-                                    jobId: parsed.jobId,
-                                    cpf: parsed.cpf,
-                                    targetName: jobTarget.targetName,
-                                    targetNameNormalized: jobTarget.targetNameNormalized,
-                                    foundName: lookupName,
-                                    foundNameNormalized,
-                                    foundBirthDate: lookupResult.dataNascimento ?? null,
-                                });
-                            } else {
-                                await deps.bulkRepository.recordNameExclusion({
-                                    jobId: parsed.jobId,
-                                    cpf: parsed.cpf,
-                                    targetName: jobTarget.targetName,
-                                    targetNameNormalized: jobTarget.targetNameNormalized,
-                                    lastFoundName: lookupName,
-                                    lastFoundNameNormalized: foundNameNormalized,
-                                    lastFoundBirthDate: lookupResult.dataNascimento ?? null,
-                                });
-                            }
+                // Only perform name matching if NOT in simple bulk mode
+                const SIMPLE_BULK_MARKER = '__SIMPLE_BULK_MODE__';
+                const isSimpleBulk = jobTarget?.targetName === SIMPLE_BULK_MARKER;
+
+                if (!isSimpleBulk && lookupName && jobTarget) {
+                    try {
+                        const foundNameNormalized = normalizePersonName(lookupName);
+                        const isMatch = foundNameNormalized === jobTarget.targetNameNormalized;
+
+                        if (isMatch) {
+                            await deps.bulkRepository.recordNameMatch({
+                                jobId: parsed.jobId,
+                                cpf: parsed.cpf,
+                                targetName: jobTarget.targetName,
+                                targetNameNormalized: jobTarget.targetNameNormalized,
+                                foundName: lookupName,
+                                foundNameNormalized,
+                                foundBirthDate: lookupResult.dataNascimento ?? null,
+                            });
+                        } else {
+                            await deps.bulkRepository.recordNameExclusion({
+                                jobId: parsed.jobId,
+                                cpf: parsed.cpf,
+                                targetName: jobTarget.targetName,
+                                targetNameNormalized: jobTarget.targetNameNormalized,
+                                lastFoundName: lookupName,
+                                lastFoundNameNormalized: foundNameNormalized,
+                                lastFoundBirthDate: lookupResult.dataNascimento ?? null,
+                            });
                         }
                     } catch (persistError) {
                         console.error('[HubDo Bulk Consumer] Failed to persist name classification:', persistError);

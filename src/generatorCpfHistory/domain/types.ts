@@ -36,7 +36,7 @@ export interface GeneratorCpfHistoryDetailsWithLookup extends Omit<GeneratorCpfH
 
 export interface CreateGeneratorCpfHistoryInput {
     partialCpf: string;
-    stateRegionDigit?: string | null;
+    stateRegionDigit: string;
     resultRecords: GeneratedCpfRecord[];
 }
 

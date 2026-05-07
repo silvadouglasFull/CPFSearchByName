@@ -204,7 +204,6 @@ export function GeneratorCpfClient() {
             if (regionDigit.trim()) {
                 query.set('regionDigit', regionDigit.trim());
             }
-
             const response = await fetch(`/api/generator-cpf?${query.toString()}`, {
                 method: 'GET',
                 headers: { Accept: 'application/json' },
@@ -308,7 +307,7 @@ export function GeneratorCpfClient() {
                 },
                 body: JSON.stringify({
                     partialCpf: partialCpf.trim(),
-                    stateRegionDigit: regionDigit.trim() ? regionDigit.trim() : null,
+                    stateRegionDigit: regionDigit.trim(),
                     records,
                 }),
             });
@@ -555,9 +554,118 @@ export function GeneratorCpfClient() {
         }
     }
 
+    async function handleHistoryBulkLookupWithOutTargetName(): Promise<void> {
+        if (!canHistoryBulkLookup || isHistoryBulkLookupLoading) {
+            return;
+        }
+
+        setIsHistoryBulkLookupLoading(true);
+        setHistoryBulkLookupErrorMessage(null);
+        setHistoryBulkLookupResult(null);
+        setCurrentJobId(null);
+
+        try {
+            const deduplicatedCpfs = Array.from(new Set(selectedHistoryCpfs));
+            const response = await fetch('/api/hubdo-cpf-lookup/bulk-simple', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    Accept: 'application/json',
+                },
+                body: JSON.stringify({ cpfs: deduplicatedCpfs, mode: historyBulkLookupMode }),
+            });
+
+            const payload = (await response.json()) as BulkHubdoLookupJobAcceptedResponse | GeneratorCpfApiError;
+
+            if (!response.ok) {
+                throw new Error((payload as GeneratorCpfApiError).error || 'Simple bulk HubDo lookup failed.');
+            }
+
+            const accepted = payload as BulkHubdoLookupJobAcceptedResponse;
+
+            // Set job ID to subscribe to realtime updates
+            setCurrentJobId(accepted.jobId);
+            setRealtimeSummary(accepted.summary);
+
+            // Keep polling as fallback for reconciliation
+            const finalStatus = await pollBulkLookupJob(accepted.jobId);
+            setHistoryBulkLookupResult(finalStatus as BulkHubdoLookupResponse);
+            setCurrentJobId(null);
+
+            if (selectedHistoryItem) {
+                await handleViewHistoryRecords(selectedHistoryItem.id);
+            }
+        } catch (error) {
+            setHistoryBulkLookupErrorMessage(error instanceof Error ? error.message : 'Unknown error.');
+            setCurrentJobId(null);
+        } finally {
+            setIsHistoryBulkLookupLoading(false);
+        }
+    }
+    async function handleBulkLookupWithOutTargetName(): Promise<void> {
+        setIsBulkLookupLoading(true);
+        setBulkLookupErrorMessage(null);
+        setBulkLookupResult(null);
+        setCurrentJobId(null);
+
+        try {
+            const response = await fetch('/api/hubdo-cpf-lookup/bulk-simple', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    Accept: 'application/json',
+                },
+                body: JSON.stringify({ cpfs: selectedCpfs, mode: bulkLookupMode }),
+            });
+
+            const payload = (await response.json()) as BulkHubdoLookupJobAcceptedResponse | GeneratorCpfApiError;
+
+            if (!response.ok) {
+                throw new Error((payload as GeneratorCpfApiError).error || 'Simple bulk HubDo lookup failed.');
+            }
+
+            const accepted = payload as BulkHubdoLookupJobAcceptedResponse;
+
+            // Set job ID to subscribe to realtime updates
+            setCurrentJobId(accepted.jobId);
+            setRealtimeSummary(accepted.summary);
+
+            // Set initial result while waiting for realtime updates
+            setBulkLookupResult({
+                job: {
+                    id: accepted.jobId,
+                    mode: bulkLookupMode,
+                    status: 'queued',
+                    createdAt: new Date().toISOString(),
+                    updatedAt: new Date().toISOString(),
+                    finishedAt: null,
+                },
+                summary: accepted.summary,
+                items: [],
+                page: 1,
+                pageSize: 50,
+                totalItems: 0,
+                totalPages: 1,
+            });
+            const finalStatus = await pollBulkLookupJob(accepted.jobId);
+            setBulkLookupResult(finalStatus as BulkHubdoLookupResponse);
+            setCurrentJobId(null);
+        } catch (error) {
+            setBulkLookupErrorMessage(error instanceof Error ? error.message : 'Unknown error.');
+            setCurrentJobId(null);
+        } finally {
+            setIsBulkLookupLoading(false);
+        }
+    }
     async function confirmBulkLookup(): Promise<void> {
         const targetName = bulkConfirmTargetName.trim();
         if (!targetName) {
+            if (bulkConfirmSource === 'search') {
+                return handleBulkLookupWithOutTargetName();
+            }
+            if (bulkConfirmSource === 'history') {
+                return handleHistoryBulkLookupWithOutTargetName();
+            }
             return;
         }
 
@@ -617,7 +725,7 @@ export function GeneratorCpfClient() {
                             </Button>
                             <Button
                                 className="rounded-2xl"
-                                disabled={!bulkConfirmTargetName.trim() || isBulkLookupLoading || isHistoryBulkLookupLoading}
+                                disabled={isBulkLookupLoading || isHistoryBulkLookupLoading}
                                 onClick={() => {
                                     void confirmBulkLookup();
                                 }}
@@ -672,6 +780,7 @@ export function GeneratorCpfClient() {
                                         className="h-11 rounded-2xl border bg-background px-3 text-sm outline-none ring-offset-background transition-shadow focus-visible:ring-2 focus-visible:ring-ring/60"
                                         onChange={(event) => setRegionDigit(event.target.value)}
                                         value={regionDigit}
+                                        required
                                     >
                                         <option value="">All states (no region filter)</option>
                                         {REGION_OPTIONS.map((option) => (
@@ -710,7 +819,7 @@ export function GeneratorCpfClient() {
                                         variant="secondary"
                                     >
                                         <Save className="mr-2 h-4 w-4" />
-                                        {isSaving ? 'Saving...' : 'Salvar Resultados'}
+                                        {isSaving ? 'Saving...' : 'Save Results'}
                                     </Button>
                                 </div>
                             </CardContent>
@@ -781,6 +890,20 @@ export function GeneratorCpfClient() {
                                                 description={bulkLookupErrorMessage}
                                                 title="Bulk lookup failed"
                                                 variant="error"
+                                            />
+                                        ) : null}
+                                        {isHistoryBulkLookupLoading && realtimeSummary ? (
+                                            <FriendlyMessage
+                                                description={`${realtimeSummary.success} success, ${realtimeSummary.error + realtimeSummary.deadLetter} error(s), ${realtimeSummary.queued + realtimeSummary.processing} pending...`}
+                                                title="Processing"
+                                                variant="info"
+                                            />
+                                        ) : null}
+                                        {isBulkLookupLoading && realtimeSummary ? (
+                                            <FriendlyMessage
+                                                description={`${realtimeSummary.success} success, ${realtimeSummary.error + realtimeSummary.deadLetter} error(s), ${realtimeSummary.queued + realtimeSummary.processing} pending...`}
+                                                title="Processing"
+                                                variant="info"
                                             />
                                         ) : null}
 

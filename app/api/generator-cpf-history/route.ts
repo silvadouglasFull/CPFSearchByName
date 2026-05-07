@@ -33,17 +33,19 @@ export async function GET(request: Request): Promise<NextResponse> {
 export async function POST(request: Request): Promise<NextResponse> {
     try {
         const body = (await request.json()) as {
-            partialCpf?: string;
-            stateRegionDigit?: string | null;
-            records?: unknown[];
+            partialCpf: string;
+            stateRegionDigit: string | null;
+            records: unknown[];
         };
-
+        if (!body.partialCpf || !body.records || !body.stateRegionDigit) {
+            throw new Error('Erro no body')
+        }
         const partialCpf = normalizePartialCpf(body.partialCpf ?? '');
         const stateRegionDigit = normalizeRegionDigit(body.stateRegionDigit);
         const records = (Array.isArray(body.records) ? body.records : []) as GeneratedCpfRecord[];
 
-        if (!partialCpf) {
-            return NextResponse.json({ error: 'partialCpf is required.' }, { status: 400 });
+        if (!partialCpf || !stateRegionDigit) {
+            return NextResponse.json({ error: 'partialCpf is and stateRegionDigit required.' }, { status: 400 });
         }
 
         const service = createGeneratorCpfHistoryService();

@@ -59,6 +59,49 @@ export class HubdoBulkLookupService {
         return created;
     }
 
+    async enqueueBulkJobSimple(input: {
+        cpfs: string[];
+        mode: HubdoBulkLookupMode;
+        requestedBy?: string;
+    }): Promise<HubdoBulkLookupCreateJobResult> {
+        const normalizedCpfs = Array.from(
+            new Set(
+                input.cpfs
+                    .map((cpf) => normalizeCpf(cpf))
+                    .filter((cpf) => cpf.length > 0),
+            ),
+        );
+
+        if (normalizedCpfs.length === 0) {
+            throw new Error('No valid CPF values were provided.');
+        }
+
+        // Use a placeholder for simple bulk (no name matching)
+        const SIMPLE_BULK_MARKER = '__SIMPLE_BULK_MODE__';
+
+        const created = await this.repository.createJob({
+            cpfs: normalizedCpfs,
+            mode: input.mode,
+            targetName: SIMPLE_BULK_MARKER,
+            targetNameNormalized: SIMPLE_BULK_MARKER,
+            requestedBy: input.requestedBy,
+        });
+
+        await Promise.all(
+            created.items.map((item) =>
+                publishHubdoBulkLookupItem({
+                    jobId: created.job.id,
+                    itemId: item.id,
+                    cpf: item.cpf,
+                    mode: created.job.mode,
+                    attempt: 1,
+                }),
+            ),
+        );
+
+        return created;
+    }
+
     async getJobStatus(params: HubdoBulkLookupGetStatusParams): Promise<HubdoBulkLookupJobStatusView | null> {
         return this.repository.getStatus(params);
     }
