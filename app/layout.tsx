@@ -22,6 +22,9 @@ export const metadata: Metadata = {
   title: "Verify Docs",
   description: "CPF search and filtering application",
   metadataBase: new URL(appUrl),
+  verification: {
+    google: 'p5pDi-oez5rGDT0nYtaMd_dmZUvo0Sn8Tqi70rIHv4A',
+  },
   openGraph: {
     title: "Verify Docs",
     description: "CPF search and filtering application",
