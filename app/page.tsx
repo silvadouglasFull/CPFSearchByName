@@ -1,3 +1,4 @@
+import { LandingFooter } from '@/components/landing/landing-footer';
 import { LandingHero } from '@/components/landing/landing-hero';
 import { LandingModuleSection } from '@/components/landing/landing-module-section';
 import { LandingModulesNavbar } from '@/components/landing/landing-modules-navbar';
@@ -16,6 +17,8 @@ export default function HomePage() {
             <LandingModuleSection index={index} key={module.link.href} module={module} />
           ))}
         </section>
+
+        <LandingFooter />
       </main>
     </div>
   );

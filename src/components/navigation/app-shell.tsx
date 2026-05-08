@@ -15,7 +15,8 @@ interface AppShellProps {
 export function AppShell({ children }: AppShellProps) {
     const pathname = usePathname();
     const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-    const isLandingPage = pathname === '/';
+    const isLegalPage = ['/', '/terms-of-use', '/privacy-policy', '/contact'].includes(pathname);
+    const isLandingPage = isLegalPage;
 
     function closeSidebar(): void {
         setIsSidebarOpen(false);

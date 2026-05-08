@@ -4,8 +4,27 @@ import { NAVIGATION_LINKS } from '@/components/navigation/navigation-links';
 import { ThemeSwitcher } from '@/components/navigation/theme-switcher';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
+import { FileText, Mail, Shield } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+
+const LEGAL_LINKS = [
+    {
+        href: '/privacy-policy',
+        icon: Shield,
+        label: 'Privacy Policy',
+    },
+    {
+        href: '/terms-of-use',
+        icon: FileText,
+        label: 'Terms of Use',
+    },
+    {
+        href: '/contact',
+        icon: Mail,
+        label: 'Contact',
+    },
+] as const;
 
 interface SidebarProps {
     className?: string;
@@ -60,6 +79,37 @@ export function Sidebar({ className, onNavigate }: SidebarProps) {
                         </Link>
                     );
                 })}
+
+                <div className="mt-6 border-t pt-4">
+                    <p className="mb-2 px-3 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                        Legal
+                    </p>
+
+                    <div className="space-y-2">
+                        {LEGAL_LINKS.map((link) => {
+                            const isActive = pathname === link.href;
+                            const Icon = link.icon;
+
+                            return (
+                                <Link
+                                    className={cn(
+                                        'flex items-center rounded-2xl border px-3 py-3 text-sm transition-colors',
+                                        'focus-visible:ring-ring/60 focus-visible:outline-none focus-visible:ring-2',
+                                        isActive
+                                            ? 'border-primary/30 bg-primary/10 text-primary'
+                                            : 'border-transparent hover:border-border hover:bg-muted/60',
+                                    )}
+                                    href={link.href}
+                                    key={link.href}
+                                    onClick={onNavigate}
+                                >
+                                    <Icon className="mr-3 size-4 shrink-0" />
+                                    <span>{link.label}</span>
+                                </Link>
+                            );
+                        })}
+                    </div>
+                </div>
             </nav>
         </aside>
     );
