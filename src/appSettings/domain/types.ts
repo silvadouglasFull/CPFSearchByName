@@ -18,6 +18,7 @@ import {
 
 export interface AppSettings {
     id: string;
+    authenticatedUserId: string | null;
     singletonKey: string;
     resultsPerPage: number;
     totalPages: number;
@@ -38,7 +39,7 @@ export interface AppSettings {
     updatedAt: Date;
 }
 
-export type AppSettingsFields = Omit<AppSettings, 'id' | 'singletonKey' | 'createdAt' | 'updatedAt'>;
+export type AppSettingsFields = Omit<AppSettings, 'id' | 'authenticatedUserId' | 'singletonKey' | 'createdAt' | 'updatedAt'>;
 
 export const GLOBAL_SETTINGS_KEY = 'global';
 
@@ -61,6 +62,6 @@ export const DEFAULT_APP_SETTINGS: AppSettingsFields = {
 };
 
 export interface AppSettingsRepository {
-    getGlobal(): Promise<AppSettings | null>;
-    upsertGlobal(settings: Partial<AppSettingsFields>): Promise<AppSettings>;
+    getGlobal(authenticatedUserId: string): Promise<AppSettings | null>;
+    upsertGlobal(authenticatedUserId: string, settings: Partial<AppSettingsFields>): Promise<AppSettings>;
 }

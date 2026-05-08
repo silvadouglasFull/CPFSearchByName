@@ -20,11 +20,12 @@ function sseEvent(data: object): Uint8Array {
 export async function GET(request: Request): Promise<Response> {
     const { searchParams } = new URL(request.url);
     const searchName = String(searchParams.get('searchName') ?? '').trim();
+    const authenticatedUserId = request.headers.get('x-authenticated-user-id')?.trim();
 
     let settings = DEFAULT_APP_SETTINGS;
 
     try {
-        settings = await createAppSettingsService().getSettings();
+        settings = await createAppSettingsService().getSettings(authenticatedUserId);
     } catch {
         settings = {
             ...DEFAULT_APP_SETTINGS,

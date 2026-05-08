@@ -1,23 +1,29 @@
 import { AppSettings, AppSettingsFields, AppSettingsRepository, DEFAULT_APP_SETTINGS, GLOBAL_SETTINGS_KEY } from '@/appSettings/domain/types';
 import { db } from '@/database/db';
 import { appSettings } from '@/database/schema';
-import { eq } from 'drizzle-orm';
+import { and, eq } from 'drizzle-orm';
 
 export class DrizzleAppSettingsRepository implements AppSettingsRepository {
-    async getGlobal(): Promise<AppSettings | null> {
+    async getGlobal(authenticatedUserId: string): Promise<AppSettings | null> {
         const result = await db
             .select()
             .from(appSettings)
-            .where(eq(appSettings.singletonKey, GLOBAL_SETTINGS_KEY))
+            .where(
+                and(
+                    eq(appSettings.authenticatedUserId, authenticatedUserId),
+                    eq(appSettings.singletonKey, GLOBAL_SETTINGS_KEY),
+                ),
+            )
             .limit(1);
 
         return result[0] ?? null;
     }
 
-    async upsertGlobal(settings: Partial<AppSettingsFields>): Promise<AppSettings> {
+    async upsertGlobal(authenticatedUserId: string, settings: Partial<AppSettingsFields>): Promise<AppSettings> {
         const insertValues = {
             ...DEFAULT_APP_SETTINGS,
             ...settings,
+            authenticatedUserId,
             singletonKey: GLOBAL_SETTINGS_KEY,
         };
 
@@ -25,7 +31,7 @@ export class DrizzleAppSettingsRepository implements AppSettingsRepository {
             .insert(appSettings)
             .values(insertValues)
             .onConflictDoUpdate({
-                target: appSettings.singletonKey,
+                target: [appSettings.authenticatedUserId, appSettings.singletonKey],
                 set: {
                     ...settings,
                     updatedAt: new Date(),

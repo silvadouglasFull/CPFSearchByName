@@ -25,7 +25,20 @@ export async function proxy(request: NextRequest) {
     const token = await getToken({ req: request, secret: process.env.NEXTAUTH_SECRET });
 
     if (token) {
-        return NextResponse.next();
+        const requestHeaders = new Headers(request.headers);
+        const authenticatedUserId = typeof token.authenticatedUserId === 'string'
+            ? token.authenticatedUserId.trim()
+            : '';
+
+        if (authenticatedUserId) {
+            requestHeaders.set('x-authenticated-user-id', authenticatedUserId);
+        }
+
+        return NextResponse.next({
+            request: {
+                headers: requestHeaders,
+            },
+        });
     }
 
     if (pathname.startsWith('/api/')) {
