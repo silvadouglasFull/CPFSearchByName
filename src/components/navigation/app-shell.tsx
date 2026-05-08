@@ -2,6 +2,7 @@
 
 import { HamburgerTrigger } from '@/components/navigation/hamburger-trigger';
 import { Sidebar } from '@/components/navigation/sidebar';
+import { ThemeSwitcher } from '@/components/navigation/theme-switcher';
 import { cn } from '@/lib/utils';
 import { useState } from 'react';
 
@@ -32,7 +33,10 @@ export function AppShell({ children }: AppShellProps) {
                         <p className="text-xs text-muted-foreground">verifyDocs</p>
                         <p className="text-sm font-semibold tracking-tight">Navigation</p>
                     </div>
-                    <HamburgerTrigger isOpen={isSidebarOpen} onToggle={toggleSidebar} />
+                    <div className="flex items-center gap-2">
+                        <ThemeSwitcher />
+                        <HamburgerTrigger isOpen={isSidebarOpen} onToggle={toggleSidebar} />
+                    </div>
                 </header>
 
                 <div
