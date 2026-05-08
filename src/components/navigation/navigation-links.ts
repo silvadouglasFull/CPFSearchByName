@@ -1,4 +1,4 @@
-import { CheckCircle2, Home, Phone, Search, Settings, UserSearch, WandSparkles } from 'lucide-react';
+import { CheckCircle2, Home, Phone, Search, Settings, User, UserSearch, WandSparkles } from 'lucide-react';
 
 export interface NavigationLink {
     label: string;
@@ -13,6 +13,12 @@ export const NAVIGATION_LINKS: NavigationLink[] = [
         href: '/',
         icon: Home,
         description: 'Main dashboard and app overview.',
+    },
+    {
+        label: 'My Profile',
+        href: '/my-profile',
+        icon: User,
+        description: 'View your authenticated account details.',
     },
     {
         label: 'Filter by CPF',
