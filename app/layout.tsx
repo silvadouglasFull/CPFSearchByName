@@ -4,7 +4,6 @@ import { THEME_STORAGE_KEY } from '@/lib/theme/theme';
 import { ThemeProvider } from '@/lib/theme/theme-provider';
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
-import Script from 'next/script';
 import "./globals.css";
 
 const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000';
@@ -55,18 +54,18 @@ export default function RootLayout({
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
       suppressHydrationWarning
     >
+      <head>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `(()=>{try{const r=document.documentElement,p=localStorage.getItem('${THEME_STORAGE_KEY}');const d=p==='dark'||(p!=='light'&&typeof matchMedia==='function'&&matchMedia('(prefers-color-scheme:dark)').matches);r.classList.toggle('dark',d);}catch{}})();`,
+          }}
+        />
+      </head>
       <body className="min-h-full">
         <ThemeProvider>
           <AppShell>{children}</AppShell>
         </ThemeProvider>
       </body>
-      <Script
-        id="theme-bootstrap"
-        strategy="beforeInteractive"
-        dangerouslySetInnerHTML={{
-          __html: `(()=>{try{const r=document.documentElement,p=localStorage.getItem('${THEME_STORAGE_KEY}');const d=p==='dark'||(p!=='light'&&typeof matchMedia==='function'&&matchMedia('(prefers-color-scheme:dark)').matches);r.classList.toggle('dark',d);}catch{}})();`,
-        }}
-      />
     </html>
   );
 }

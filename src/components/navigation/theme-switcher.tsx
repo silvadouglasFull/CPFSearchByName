@@ -5,6 +5,7 @@ import type { ThemePreference } from '@/lib/theme/theme';
 import { useTheme } from '@/lib/theme/theme-provider';
 import { cn } from '@/lib/utils';
 import { ChevronDown, Monitor, Moon, Sun } from 'lucide-react';
+import { useEffect, useState } from 'react';
 
 const THEME_OPTIONS = [
     {
@@ -30,7 +31,15 @@ interface ThemeSwitcherProps {
 
 export function ThemeSwitcher({ className }: ThemeSwitcherProps) {
     const { theme, setTheme } = useTheme();
-    const activeThemeOption = THEME_OPTIONS.find((option) => option.value === theme) ?? THEME_OPTIONS[2];
+    const [mounted, setMounted] = useState(false);
+
+    useEffect(() => {
+        setMounted(true);
+    }, []);
+
+    const activeThemeOption = mounted
+        ? (THEME_OPTIONS.find((option) => option.value === theme) ?? THEME_OPTIONS[2])
+        : THEME_OPTIONS[2]; // 'system'/Monitor — matches server default
     const ActiveIcon = activeThemeOption.icon;
 
     return (
@@ -43,7 +52,7 @@ export function ThemeSwitcher({ className }: ThemeSwitcherProps) {
                     'h-8 min-w-[5.5rem] appearance-none rounded-xl pl-8 pr-8 text-xs md:min-w-28 md:text-sm',
                 )}
                 onChange={(event) => setTheme(event.target.value as ThemePreference)}
-                value={theme}
+                value={mounted ? theme : 'system'}
             >
                 {THEME_OPTIONS.map((option) => (
                     <option key={option.value} value={option.value}>
