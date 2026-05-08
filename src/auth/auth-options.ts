@@ -1,3 +1,4 @@
+import { initializeDefaultSettings } from '@/appSettings';
 import { createUserProfileService } from '@/userProfile';
 import { type NextAuthOptions } from 'next-auth';
 import GoogleProvider from 'next-auth/providers/google';
@@ -27,11 +28,19 @@ export const authOptions: NextAuthOptions = {
             }
 
             try {
-                await userProfileService.persistAuthenticatedUser({
+                const persistedUser = await userProfileService.persistAuthenticatedUser({
                     email: user.email,
                     name: user.name ?? user.email,
                     profilePicture: user.image ?? null,
                 });
+
+                void (async () => {
+                    try {
+                        await initializeDefaultSettings(persistedUser.id);
+                    } catch (error) {
+                        console.error('Failed to initialize default app settings for user:', error);
+                    }
+                })();
             } catch (error) {
                 console.error('Failed to persist authenticated user profile:', error);
             }

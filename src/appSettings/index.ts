@@ -8,3 +8,7 @@ export { AppSettingsService, DrizzleAppSettingsRepository };
 export function createAppSettingsService(): AppSettingsService {
     return new AppSettingsService(new DrizzleAppSettingsRepository());
 }
+
+export async function initializeDefaultSettings(authenticatedUserId: string): Promise<void> {
+    return createAppSettingsService().initializeDefaultSettingsForUser(authenticatedUserId);
+}

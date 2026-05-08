@@ -19,6 +19,17 @@ export class AppSettingsService {
         return this.repository.upsertGlobal(userId, updates);
     }
 
+    async initializeDefaultSettingsForUser(authenticatedUserId: string): Promise<void> {
+        const userId = this.requireAuthenticatedUserId(authenticatedUserId);
+        const existing = await this.repository.getGlobal(userId);
+
+        if (existing) {
+            return;
+        }
+
+        await this.repository.upsertGlobal(userId, DEFAULT_APP_SETTINGS);
+    }
+
     private requireAuthenticatedUserId(authenticatedUserId?: string): string {
         const normalized = authenticatedUserId?.trim();
 
