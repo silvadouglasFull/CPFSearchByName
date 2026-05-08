@@ -5,7 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Search } from 'lucide-react';
-import { useEffect, useEffectEvent, useMemo, useState } from 'react';
+import { Fragment, useEffect, useEffectEvent, useMemo, useState } from 'react';
 import {
     HubdoCpfHistoryApiError,
     HubdoCpfHistoryItem,
@@ -147,7 +147,7 @@ export function HubdoCpfHistoryTable({
                                 const isExpanded = expandedItemId === item.id;
 
                                 return (
-                                    <>
+                                    <Fragment key={item.id}>
                                         <tr className="border-t hover:bg-muted/40" key={item.id}>
                                             <td className="p-3">{item.cpf}</td>
                                             <td className="p-3">
@@ -187,7 +187,7 @@ export function HubdoCpfHistoryTable({
                                                 </td>
                                             </tr>
                                         ) : null}
-                                    </>
+                                    </Fragment>
                                 );
                             })}
                         </tbody>

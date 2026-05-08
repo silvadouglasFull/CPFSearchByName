@@ -3,13 +3,17 @@
   "version": "1.0.0",
   "description": "",
   "main": "index.js",
+  "engines": {
+    "node": ">=20 <24"
+  },
   "scripts": {
     "node-build": "tsc -p tsconfig.node.json && tsc-alias -p tsconfig.node.json",
     "filter:cpf": "npm run build && node filterByCpf.js",
     "test": "echo \"Error: no test specified\" && exit 1",
-    "dev": "START_HUBDO_BULK_WORKER=true START_CREDIFY_PHONE_WORKER=true tsx server.ts",
+    "dev": "next dev",
+    "dev:workers": "START_HUBDO_BULK_WORKER=true START_CREDIFY_PHONE_WORKER=true tsx server.ts",
     "dev:next": "next dev",
-    "dev:socket": "START_HUBDO_BULK_WORKER=true START_CREDIFY_PHONE_WORKER=true tsx server.ts",
+    "dev:socket": "tsx server.ts",
     "build": "next build",
     "start": "START_HUBDO_BULK_WORKER=true START_CREDIFY_PHONE_WORKER=true node -r tsx/cjs server.ts",
     "start:next": "next start",
