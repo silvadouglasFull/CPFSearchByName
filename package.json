@@ -58,6 +58,7 @@
     "drizzle-kit": "^0.31.10",
     "eslint": "^9",
     "eslint-config-next": "16.2.4",
+    "neonctl": "^2.22.0",
     "tailwindcss": "^4",
     "tsc-alias": "^1.8.16",
     "tsx": "^4.21.0",

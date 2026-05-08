@@ -1,6 +1,7 @@
 'use client';
 
 import { NAVIGATION_LINKS } from '@/components/navigation/navigation-links';
+import { ThemeSwitcher } from '@/components/navigation/theme-switcher';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import Link from 'next/link';
@@ -16,14 +17,21 @@ export function Sidebar({ className, onNavigate }: SidebarProps) {
 
     return (
         <aside className={cn('flex min-h-full w-full flex-col rounded-none border-r bg-card', className)}>
-            <div className="flex items-center justify-between border-b px-4 py-4">
-                <div className="space-y-1">
-                    <p className="text-sm text-muted-foreground">Navigation</p>
-                    <h1 className="text-base font-semibold tracking-tight">CPF Search</h1>
+            <div className="space-y-3 border-b px-4 py-4">
+                <div className="flex items-center justify-between">
+                    <div className="space-y-1">
+                        <p className="text-sm text-muted-foreground">Navigation</p>
+                        <h1 className="text-base font-semibold tracking-tight">CPF Search</h1>
+                    </div>
+                    <Badge className="rounded-full" variant="secondary">
+                        v1
+                    </Badge>
                 </div>
-                <Badge className="rounded-full" variant="secondary">
-                    v1
-                </Badge>
+
+                <div>
+                    <p className="mb-2 text-xs text-muted-foreground">Theme</p>
+                    <ThemeSwitcher className="w-full justify-center" />
+                </div>
             </div>
 
             <nav className="flex-1 space-y-2 p-3" role="navigation">

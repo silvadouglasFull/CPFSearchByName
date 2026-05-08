@@ -2,15 +2,20 @@
 
 import { HamburgerTrigger } from '@/components/navigation/hamburger-trigger';
 import { Sidebar } from '@/components/navigation/sidebar';
+import { ThemeSwitcher } from '@/components/navigation/theme-switcher';
 import { cn } from '@/lib/utils';
+import { usePathname } from 'next/navigation';
 import { useState } from 'react';
+import { BrandLogo } from '../brand/brand-logo';
 
 interface AppShellProps {
     children: React.ReactNode;
 }
 
 export function AppShell({ children }: AppShellProps) {
+    const pathname = usePathname();
     const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+    const isLandingPage = pathname === '/';
 
     function closeSidebar(): void {
         setIsSidebarOpen(false);
@@ -18,6 +23,46 @@ export function AppShell({ children }: AppShellProps) {
 
     function toggleSidebar(): void {
         setIsSidebarOpen((previous) => !previous);
+    }
+
+    if (isLandingPage) {
+        return (
+            <div className="relative min-h-screen w-full bg-linear-to-br from-background to-muted/30">
+                <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b bg-background/80 px-4 backdrop-blur md:hidden">
+                    <div className="space-y-0.5">
+                        <BrandLogo />
+                    </div>
+                    <div className="flex items-center gap-2">
+                        <ThemeSwitcher />
+                        <HamburgerTrigger isOpen={isSidebarOpen} onToggle={toggleSidebar} />
+                    </div>
+                </header>
+
+                <div className="absolute top-4 right-4 z-30 hidden md:block">
+                    <ThemeSwitcher />
+                </div>
+
+                <div
+                    className={cn(
+                        'fixed inset-0 z-40 bg-black/45 transition-opacity md:hidden',
+                        isSidebarOpen ? 'opacity-100' : 'pointer-events-none opacity-0',
+                    )}
+                    onClick={closeSidebar}
+                />
+
+                <div
+                    className={cn(
+                        'fixed inset-y-0 left-0 z-50 w-80 max-w-[85vw] transition-transform md:hidden',
+                        isSidebarOpen ? 'translate-x-0' : '-translate-x-full',
+                    )}
+                    id="mobile-sidebar"
+                >
+                    <Sidebar className="min-h-full rounded-none" onNavigate={closeSidebar} />
+                </div>
+
+                <div className="flex min-h-screen w-full">{children}</div>
+            </div>
+        );
     }
 
     return (
@@ -32,7 +77,10 @@ export function AppShell({ children }: AppShellProps) {
                         <p className="text-xs text-muted-foreground">verifyDocs</p>
                         <p className="text-sm font-semibold tracking-tight">Navigation</p>
                     </div>
-                    <HamburgerTrigger isOpen={isSidebarOpen} onToggle={toggleSidebar} />
+                    <div className="flex items-center gap-2">
+                        <ThemeSwitcher />
+                        <HamburgerTrigger isOpen={isSidebarOpen} onToggle={toggleSidebar} />
+                    </div>
                 </header>
 
                 <div
