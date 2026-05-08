@@ -217,3 +217,95 @@ export const hubdoBulkLookupNameExclusions = pgTable(
         ),
     }),
 );
+
+export const credifyPhoneLookupJobs = pgTable(
+    'credify_phone_lookup_jobs',
+    {
+        id: uuid('id').defaultRandom().primaryKey(),
+        source: text('source').notNull(),
+        status: text('status').notNull(), // 'queued' | 'processing' | 'completed' | 'failed'
+        totalItems: integer('total_items').notNull(),
+        queuedItems: integer('queued_items').notNull().default(0),
+        processingItems: integer('processing_items').notNull().default(0),
+        successItems: integer('success_items').notNull().default(0),
+        notFoundItems: integer('not_found_items').notNull().default(0),
+        errorItems: integer('error_items').notNull().default(0),
+        deadLetterItems: integer('dead_letter_items').notNull().default(0),
+        createdBy: text('created_by'),
+        createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+        updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+        finishedAt: timestamp('finished_at', { withTimezone: true }),
+    },
+    (table) => ({
+        statusIdx: index('cpj_status_idx').on(table.status),
+    }),
+);
+
+export const credifyPhoneLookupJobItems = pgTable(
+    'credify_phone_lookup_job_items',
+    {
+        id: uuid('id').defaultRandom().primaryKey(),
+        jobId: uuid('job_id')
+            .notNull()
+            .references(() => credifyPhoneLookupJobs.id, { onDelete: 'cascade' }),
+        lookupId: uuid('lookup_id'), // Plain UUID, no FK ref (avoids circular ref with credifyPhoneLookups)
+        rawPhone: text('raw_phone').notNull(),
+        normalizedPhone: text('normalized_phone').notNull(),
+        ddd: text('ddd').notNull(),
+        localNumber: text('local_number').notNull(),
+        status: text('status').notNull(), // 'queued' | 'processing' | 'success' | 'not_found' | 'error' | 'dead_letter'
+        attemptCount: integer('attempt_count').notNull().default(0),
+        providerQueryId: text('provider_query_id').notNull().unique(),
+        providerCode: text('provider_code'),
+        errorCode: text('error_code'),
+        errorMessage: text('error_message'),
+        createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+        updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+        finishedAt: timestamp('finished_at', { withTimezone: true }),
+    },
+    (table) => ({
+        jobIdIdx: index('cpji_job_id_idx').on(table.jobId),
+        statusIdx: index('cpji_status_idx').on(table.status),
+        jobPhoneUniqueIdx: uniqueIndex('cpji_job_phone_uidx').on(table.jobId, table.normalizedPhone),
+    }),
+);
+
+export const credifyPhoneLookups = pgTable(
+    'credify_phone_lookups',
+    {
+        id: uuid('id').defaultRandom().primaryKey(),
+        jobId: uuid('job_id').references(() => credifyPhoneLookupJobs.id, { onDelete: 'set null' }),
+        jobItemId: uuid('job_item_id'), // Plain UUID, no FK ref (avoids circular ref with credifyPhoneLookupJobItems)
+        rawPhone: text('raw_phone').notNull(),
+        normalizedPhone: text('normalized_phone').notNull(),
+        ddd: text('ddd').notNull(),
+        localNumber: text('local_number').notNull(),
+        providerQueryId: text('provider_query_id').notNull().unique(),
+        status: text('status').notNull(), // 'queued' | 'processing' | 'success' | 'not_found' | 'error' | 'dead_letter'
+        providerCode: text('provider_code'),
+        providerMessage: text('provider_message'),
+        cpf: text('cpf'),
+        nome: text('nome'),
+        tpLogradouro: text('tp_logradouro'),
+        logradouro: text('logradouro'),
+        numero: text('numero'),
+        endereco: text('endereco'),
+        complemento: text('complemento'),
+        bairro: text('bairro'),
+        cidade: text('cidade'),
+        uf: text('uf'),
+        cep: text('cep'),
+        phoneType: text('phone_type'),
+        errorCode: text('error_code'),
+        errorMessage: text('error_message'),
+        rawResponse: jsonb('raw_response'),
+        createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+        updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+        finishedAt: timestamp('finished_at', { withTimezone: true }),
+    },
+    (table) => ({
+        normalizedPhoneIdx: index('cpl_norm_phone_idx').on(table.normalizedPhone),
+        statusIdx: index('cpl_status_idx').on(table.status),
+        createdAtIdx: index('cpl_created_at_idx').on(table.createdAt),
+    }),
+);

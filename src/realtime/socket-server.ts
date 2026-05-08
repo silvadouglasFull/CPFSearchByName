@@ -70,6 +70,37 @@ export function initializeSocketIOServer(httpServer: any): SocketIOServer {
         });
     });
 
+    const credifyNamespace = io.of('/credify-phone-lookup');
+
+    credifyNamespace.on('connection', (socket: Socket) => {
+        socket.on('credify.phone.subscribe', (data: { jobId: string }) => {
+            const { jobId } = data;
+
+            if (!jobId || typeof jobId !== 'string') {
+                socket.emit('error', { message: 'Invalid jobId' });
+                return;
+            }
+
+            const room = `credify:phone:job:${jobId}`;
+            socket.join(room);
+
+            socket.emit('credify.phone.job.subscribed', {
+                jobId,
+                connectedAt: new Date().toISOString(),
+            });
+        });
+
+        socket.on('credify.phone.unsubscribe', (data: { jobId: string }) => {
+            const { jobId } = data;
+
+            if (!jobId || typeof jobId !== 'string') {
+                return;
+            }
+
+            socket.leave(`credify:phone:job:${jobId}`);
+        });
+    });
+
     setSocketIOServer(io);
     return io;
 }

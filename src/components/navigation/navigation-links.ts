@@ -1,4 +1,4 @@
-import { CheckCircle2, Home, Search, Settings, UserSearch, WandSparkles } from 'lucide-react';
+import { CheckCircle2, Home, Phone, Search, Settings, UserSearch, WandSparkles } from 'lucide-react';
 
 export interface NavigationLink {
     label: string;
@@ -37,6 +37,12 @@ export const NAVIGATION_LINKS: NavigationLink[] = [
         href: '/hubdo-cpf-lookup',
         icon: CheckCircle2,
         description: 'Check CPF records directly through Federal Revenue via HubDo.',
+    },
+    {
+        label: 'Credify Phone Lookup',
+        href: '/credifyapis-phone-lookup',
+        icon: Phone,
+        description: 'Queue and track personal data lookups by phone number via Credify.',
     },
     {
         label: 'App Settings',
