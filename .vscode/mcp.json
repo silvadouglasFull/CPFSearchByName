@@ -1,0 +1,44 @@
+{
+  "servers": {
+    "langchain": {
+      "command": "${workspaceFolder}/.vscode/bin/npx-resolver.sh",
+      "args": ["-y", "langchain-mcp"],
+      "env": {
+        "LANGCHAIN_API_KEY": "${input:langchainApiKey}"
+      }
+    },
+    "fetch": {
+      "command": "${workspaceFolder}/.vscode/bin/npx-resolver.sh",
+      "args": ["-y", "mcp-server-fetch-typescript"]
+    },
+    "flowbite": {
+      "command": "${workspaceFolder}/.vscode/bin/npx-resolver.sh",
+      "args": ["-y", "flowbite-mcp"],
+      "env": {
+        "FIGMA_ACCESS_TOKEN": "${input:figmaToken}"
+      }
+    },
+    "next-devtools": {
+      "command": "${workspaceFolder}/.vscode/bin/npx-resolver.sh",
+      "args": ["-y", "next-devtools-mcp@latest"]
+    },
+    "openaiDeveloperDocs": {
+      "type": "http",
+      "url": "https://developers.openai.com/mcp"
+    }
+  },
+  "inputs": [
+    {
+      "id": "figmaToken",
+      "type": "promptString",
+      "description": "Figma Personal Access Token",
+      "password": true
+    },
+    {
+      "id": "langchainApiKey",
+      "type": "promptString",
+      "description": "LangChain API Key (LangSmith)",
+      "password": true
+    }
+  ]
+}
