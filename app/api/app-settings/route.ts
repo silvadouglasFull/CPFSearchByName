@@ -53,9 +53,21 @@ function toPartialAppSettingsFields(payload: unknown): Partial<AppSettingsFields
     return updates as Partial<AppSettingsFields>;
 }
 
-export async function GET(): Promise<NextResponse> {
+function getAuthenticatedUserId(request: Request): string | null {
+    const header = request.headers.get('x-authenticated-user-id');
+    const normalized = header?.trim();
+    return normalized || null;
+}
+
+export async function GET(request: Request): Promise<NextResponse> {
     try {
-        const settings = await createAppSettingsService().getSettings();
+        const authenticatedUserId = getAuthenticatedUserId(request);
+
+        if (!authenticatedUserId) {
+            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+        }
+
+        const settings = await createAppSettingsService().getSettings(authenticatedUserId);
         return NextResponse.json({ settings: toAppSettingsFields(settings) }, { status: 200 });
     } catch (error) {
         const message = error instanceof Error ? error.message : 'Unknown error.';
@@ -65,8 +77,14 @@ export async function GET(): Promise<NextResponse> {
 
 export async function PUT(request: Request): Promise<NextResponse> {
     try {
+        const authenticatedUserId = getAuthenticatedUserId(request);
+
+        if (!authenticatedUserId) {
+            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+        }
+
         const updates = toPartialAppSettingsFields(await request.json());
-        const settings = await createAppSettingsService().updateSettings(updates);
+        const settings = await createAppSettingsService().updateSettings(authenticatedUserId, updates);
         return NextResponse.json({ settings: toAppSettingsFields(settings) }, { status: 200 });
     } catch (error) {
         const message = error instanceof Error ? error.message : 'Unknown error.';
