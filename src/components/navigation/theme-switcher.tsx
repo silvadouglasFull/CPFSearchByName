@@ -1,9 +1,10 @@
 'use client';
 
-import { Button } from '@/components/ui/button';
+import { buttonVariants } from '@/components/ui/button';
+import type { ThemePreference } from '@/lib/theme/theme';
 import { useTheme } from '@/lib/theme/theme-provider';
 import { cn } from '@/lib/utils';
-import { Monitor, Moon, Sun } from 'lucide-react';
+import { ChevronDown, Monitor, Moon, Sun } from 'lucide-react';
 
 const THEME_OPTIONS = [
     {
@@ -29,27 +30,28 @@ interface ThemeSwitcherProps {
 
 export function ThemeSwitcher({ className }: ThemeSwitcherProps) {
     const { theme, setTheme } = useTheme();
+    const activeThemeOption = THEME_OPTIONS.find((option) => option.value === theme) ?? THEME_OPTIONS[2];
+    const ActiveIcon = activeThemeOption.icon;
 
     return (
-        <div className={cn('inline-flex items-center rounded-2xl border bg-background p-1', className)} role="group">
-            {THEME_OPTIONS.map((option) => {
-                const Icon = option.icon;
-
-                return (
-                    <Button
-                        aria-label={`Use ${option.label.toLowerCase()} theme`}
-                        className="rounded-xl"
-                        key={option.value}
-                        onClick={() => setTheme(option.value)}
-                        size="sm"
-                        type="button"
-                        variant={theme === option.value ? 'secondary' : 'ghost'}
-                    >
-                        <Icon className="size-3.5" />
+        <div className={cn('relative inline-flex items-center', className)}>
+            <ActiveIcon className="pointer-events-none absolute left-2.5 z-10 size-3.5 text-muted-foreground" />
+            <select
+                aria-label="Select theme"
+                className={cn(
+                    buttonVariants({ size: 'sm', variant: 'outline' }),
+                    'h-8 min-w-[5.5rem] appearance-none rounded-xl pl-8 pr-8 text-xs md:min-w-28 md:text-sm',
+                )}
+                onChange={(event) => setTheme(event.target.value as ThemePreference)}
+                value={theme}
+            >
+                {THEME_OPTIONS.map((option) => (
+                    <option key={option.value} value={option.value}>
                         {option.label}
-                    </Button>
-                );
-            })}
+                    </option>
+                ))}
+            </select>
+            <ChevronDown className="pointer-events-none absolute right-2.5 size-3.5 text-muted-foreground" />
         </div>
     );
 }
