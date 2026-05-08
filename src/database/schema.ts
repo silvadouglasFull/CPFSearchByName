@@ -23,6 +23,13 @@ export const appSettings = pgTable('app_settings', {
     updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
 });
 
+export const authenticatedUsers = pgTable('authenticated_users', {
+    id: uuid('id').defaultRandom().primaryKey(),
+    name: text('name').notNull(),
+    profilePicture: text('profile_picture'),
+    email: text('email').notNull().unique(),
+});
+
 export const filterCpfSearchHistory = pgTable('filter_cpf_search_history', {
     id: uuid('id').defaultRandom().primaryKey(),
     searchTerm: text('search_term').notNull(),
